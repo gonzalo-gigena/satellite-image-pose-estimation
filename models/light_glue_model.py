@@ -1,5 +1,9 @@
 # Assume extract_points is defined in light_glue_model.py
 try:
+  import sys
+  import os
+  # Add the directory containing LightGlue to the system path
+  sys.path.append(os.path.dirname(os.path.abspath(__file__)))
   from LightGlue.lightglue import LightGlue, SuperPoint, DISK, SIFT, ALIKED, DoGHardNet
   from LightGlue.lightglue.utils import load_image, rbd
 except ImportError:
@@ -10,7 +14,6 @@ extractor = SuperPoint(max_num_keypoints=None).eval().cuda()  # load the extract
 
 # or DISK+LightGlue, ALIKED+LightGlue or SIFT+LightGlue
 #extractor = DISK(max_num_keypoints=2048).eval().cuda()  # load the extractor
-  
 
 # SuperPoint+LightGlue
 matcher = LightGlue(features='superpoint', depth_confidence=-1, width_confidence=-1).eval().cuda()  # load the matcher

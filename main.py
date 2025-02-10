@@ -1,15 +1,15 @@
 import tensorflow as tf
 
 from data_loader import MatchingDataLoader, GrayscaleDataLoader
-from feature_matching_model import (
+from models.feature_matching_model import (
   DataGenerator as MatchingDataGenerator,
   FeatureMatchingModel
 )
-from grayscale_model import (
+from models.grayscale_model import (
   DataGenerator as GrayscaleDataGenerator,
   GrayscaleModel,
 )
-from losses import quaternion_loss  # Import the shared loss function
+from models.losses import quaternion_loss  # Import the shared loss function
 from history_analysis import analyze_model_performance
 
 def get_optimizer(optimizer_name, learning_rate):
@@ -56,7 +56,7 @@ def train_model(
     train_generator,
     validation_data=val_generator,
     epochs=epochs,
-    callbacks=callbacks,
+    #callbacks=callbacks,
   )
 
   return model, history

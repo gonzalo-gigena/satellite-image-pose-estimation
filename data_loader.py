@@ -5,7 +5,7 @@ import tensorflow as tf
 from datetime import datetime
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
-from light_glue_model import extract_points
+from models.light_glue_model import extract_points
 
 class DataLoader:
   def __init__(self, data_path, train_split, validation_split, seed):

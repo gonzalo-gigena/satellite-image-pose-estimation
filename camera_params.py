@@ -47,3 +47,4 @@ def get_camera_matrix():
       [0,  fy,  cy],
       [0,   0,   1]
   ])
+  return camera_matrix
