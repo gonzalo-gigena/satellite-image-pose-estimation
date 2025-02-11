@@ -136,7 +136,7 @@ def main(args):
     model = GrayscaleModel()
 
   # Get the optimizer
-  optimizer = get_optimizer(args.optimizer, args.learning_rate)
+  optimizer = get_optimizer(args.optimizer, args.lr)
 
   # Train the model
   model, history = train_model(

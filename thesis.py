@@ -42,7 +42,7 @@ def parse_args():
                       help='Batch size for training')
   parser.add_argument('--epochs', type=int, default=100,
                       help='Number of training epochs')
-  parser.add_argument('--learning_rate', type=float, default=0.001,
+  parser.add_argument('--lr', type=float, default=0.001,
                       help='Learning rate for optimizer')
   parser.add_argument('--optimizer', type=str, default='adam',
                       choices=['adam', 'sgd', 'rmsprop'],
