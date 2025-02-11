@@ -31,10 +31,10 @@ def parse_args():
                       help='Ratio of training data split')
   parser.add_argument('--validation_split', type=float, default=0.0,
                       help='Ratio of validation data split')
-  parser.add_argument('--matching_method', type=str, default='light_glue',
-                      choices=['light_glue'],
+  parser.add_argument('--matching_method', type=str, default=None,
+                      choices=[None, 'light_glue'],
                       help='Feature matching method')
-  parser.add_argument('--num_matches', type=int, default=100,
+  parser.add_argument('--num_matches', type=int, default=None,
                       help='desired fixed number of matches')
   
   # Training parameters

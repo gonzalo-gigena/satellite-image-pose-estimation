@@ -51,23 +51,34 @@ class GrayscaleModel(tf.keras.Model):
     return quaternions_normalized
 
 class DataGenerator(tf.keras.utils.Sequence):
-  def __init__(self, image_data, numerical, targets, batch_size=32):
-    self.image_data = tf.convert_to_tensor(image_data, dtype=tf.float32)
+  def __init__(self, images, numerical, targets, shuffle, batch_size=32):
+    self.images = tf.convert_to_tensor(images, dtype=tf.float32)
     self.numerical = tf.convert_to_tensor(numerical, dtype=tf.float32)
     self.targets = tf.convert_to_tensor(targets, dtype=tf.float32)
     self.batch_size = batch_size
+    self.indexes = np.arange(len(self.targets))
+    self.shuffle = shuffle
+
+    # If shuffle is True, shuffle the indices right away
+    if self.shuffle:
+      np.random.shuffle(self.indexes)
+
+  def on_epoch_end(self):
+    """Called at the end of every epoch"""
+    if self.shuffle:
+      np.random.shuffle(self.indexes)
 
   def __len__(self):
-    return int(np.ceil(len(self.image_data) / self.batch_size))
+    return int(np.ceil(len(self.images) / self.batch_size))
 
   def __getitem__(self, idx):
     batch_slice = slice(idx * self.batch_size, (idx + 1) * self.batch_size)
 
-    batch_image_data = self.image_data[batch_slice]
+    batch_images = self.images[batch_slice]
     batch_numerical = self.numerical[batch_slice]
     batch_targets = self.targets[batch_slice]
 
     return {
-      'images': batch_image_data,
+      'image_data': batch_images,
       'numerical': batch_numerical
     }, batch_targets

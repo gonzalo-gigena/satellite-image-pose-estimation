@@ -260,6 +260,4 @@ class GrayscaleDataLoader(DataLoader):
     img = load_img(image_path, color_mode='grayscale')
     # Convert image to array and normalize
     img_array = img_to_array(img) / 255.0
-    # Flatten the image into a 1D array of pixels
-    pixels = img_array.flatten()
-    return pixels
+    return img_array

@@ -106,17 +106,3 @@ def analyze_model_performance(model, history, test_data, test_targets):
     print(f"Test MAE: {test_loss[1]:.4f}")
     
     return metrics
-
-# Example usage:
-"""
-model, history = train_model(data_splits)
-metrics = analyze_model_performance(
-    model, 
-    history,
-    {
-        'points': test_points,
-        'numerical': test_numerical
-    },
-    test_targets
-)
-"""

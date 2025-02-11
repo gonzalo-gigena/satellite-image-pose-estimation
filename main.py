@@ -56,6 +56,7 @@ def train_model(
     train_generator,
     validation_data=val_generator,
     epochs=epochs,
+    shuffle=True,
     #callbacks=callbacks,
   )
 
@@ -87,6 +88,7 @@ def main(args):
       points=data['train']['image_data'],
       numerical=data['train']['numerical'],
       targets=data['train']['targets'],
+      shuffle=True,
       batch_size=args.batch_size,
     )
 
@@ -94,6 +96,7 @@ def main(args):
       points=data['val']['image_data'],
       numerical=data['val']['numerical'],
       targets=data['val']['targets'],
+      shuffle=False,
       batch_size=args.batch_size,
     )
 
@@ -117,6 +120,7 @@ def main(args):
       images=data['train']['image_data'],
       numerical=data['train']['numerical'],
       targets=data['train']['targets'],
+      shuffle=True,
       batch_size=args.batch_size,
     )
 
@@ -124,6 +128,7 @@ def main(args):
       images=data['val']['image_data'],
       numerical=data['val']['numerical'],
       targets=data['val']['targets'],
+      shuffle=False,
       batch_size=args.batch_size,
     )
 
