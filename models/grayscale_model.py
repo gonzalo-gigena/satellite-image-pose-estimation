@@ -51,7 +51,7 @@ class GrayscaleModel(tf.keras.Model):
     return quaternions_normalized
 
 class DataGenerator(tf.keras.utils.Sequence):
-  def __init__(self, images, numerical, targets, shuffle, batch_size=32):
+  def __init__(self, images, numerical, targets, shuffle, batch_size=32, augment=False):
     self.images = tf.convert_to_tensor(images, dtype=tf.float32)
     self.numerical = tf.convert_to_tensor(numerical, dtype=tf.float32)
     self.targets = tf.convert_to_tensor(targets, dtype=tf.float32)
@@ -62,6 +62,24 @@ class DataGenerator(tf.keras.utils.Sequence):
     # If shuffle is True, shuffle the indices right away
     if self.shuffle:
       np.random.shuffle(self.indexes)
+    
+    self.augment = augment
+    self.augmentation  = tf.keras.Sequential([
+      # Random brightness changes
+      tf.keras.layers.RandomBrightness(factor=0.2),
+      
+      # Random contrast changes
+      tf.keras.layers.RandomContrast(factor=0.2),
+      
+      # Add random noise
+      tf.keras.layers.GaussianNoise(0.1),
+      
+      # Random rotation (small angles)
+      tf.keras.layers.RandomRotation(0.1),
+      
+      # Random zoom
+      tf.keras.layers.RandomZoom(0.1),
+    ])
 
   def on_epoch_end(self):
     """Called at the end of every epoch"""
@@ -77,6 +95,9 @@ class DataGenerator(tf.keras.utils.Sequence):
     batch_images = self.images[batch_slice]
     batch_numerical = self.numerical[batch_slice]
     batch_targets = self.targets[batch_slice]
+    
+    if self.augment:
+      batch_images = self.augmentation(batch_images, training=True)
 
     return {
       'image_data': batch_images,
