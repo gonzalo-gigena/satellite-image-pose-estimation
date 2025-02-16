@@ -1,66 +1,7 @@
 import tensorflow as tf
-
-from data_loader import MatchingDataLoader, GrayscaleDataLoader
-from models.feature_matching_model import (
-  DataGenerator as MatchingDataGenerator,
-  FeatureMatchingModel
-)
-from models.grayscale_model import (
-  DataGenerator as GrayscaleDataGenerator,
-  GrayscaleModel,
-)
-from models.losses import quaternion_loss  # Import the shared loss function
+  
 from history_analysis import analyze_model_performance
-
-def get_optimizer(optimizer_name, learning_rate):
-  """Select and return the optimizer based on the given name."""
-  optimizers = {
-    'adam': tf.keras.optimizers.Adam,
-    'sgd': tf.keras.optimizers.SGD,
-    'rmsprop': tf.keras.optimizers.RMSprop,
-  }
-  optimizer_class = optimizers.get(optimizer_name.lower())
-  if optimizer_class is None:
-    raise ValueError(f"Unsupported optimizer: {optimizer_name}")
-  return optimizer_class(learning_rate=learning_rate)
-
-def train_model(
-  model,
-  train_generator,
-  val_generator,
-  optimizer,
-  loss,
-  epochs,
-):
-  """Train the given model with the provided data generators."""
-  model.compile(
-    optimizer=optimizer,
-    loss=loss,
-    metrics=['mae'],
-  )
-
-  # Define callbacks
-  callbacks = [
-    tf.keras.callbacks.EarlyStopping(
-      patience=10,
-      restore_best_weights=True,
-    ),
-    tf.keras.callbacks.ReduceLROnPlateau(
-      factor=0.5,
-      patience=5,
-    ),
-  ]
-
-  # Train the model
-  history = model.fit(
-    train_generator,
-    validation_data=val_generator,
-    epochs=epochs,
-    shuffle=True,
-    #callbacks=callbacks,
-  )
-
-  return model, history
+from utils import get_optimizer, get_data_loader, get_loss_function, get_model, get_train_generator
 
 def main(args):
   """Main function to execute training based on provided arguments.
@@ -68,75 +9,42 @@ def main(args):
   Args:
       args (argparse.Namespace): Parsed command-line arguments.
   """
-  # Select appropriate data loader and model based on matching_method
-  if args.matching_method is not None:
-    # Using feature matching data
-    data_loader = MatchingDataLoader(
-      data_path=args.data_path,
-      train_split=args.train_split,
-      validation_split=args.validation_split,
-      seed=args.seed,
-      matching_method=args.matching_method,
-      num_matches=args.num_matches,
-    )
-
-    # Load data
-    data = data_loader.load_data()
-
-    # Create data generators
-    train_generator = MatchingDataGenerator(
-      points=data['train']['image_data'],
-      numerical=data['train']['numerical'],
-      targets=data['train']['targets'],
-      shuffle=True,
-      batch_size=args.batch_size,
-    )
-
-    val_generator = MatchingDataGenerator(
-      points=data['val']['image_data'],
-      numerical=data['val']['numerical'],
-      targets=data['val']['targets'],
-      shuffle=False,
-      batch_size=args.batch_size,
-    )
-
-    # Instantiate the model
-    model = FeatureMatchingModel()
-
-  else:
-    # Using grayscale images
-    data_loader = GrayscaleDataLoader(
-      data_path=args.data_path,
-      train_split=args.train_split,
-      validation_split=args.validation_split,
-      seed=args.seed,
-    )
-
-    # Load data
-    data = data_loader.load_data()
-
-    # Create data generators
-    train_generator = GrayscaleDataGenerator(
-      images=data['train']['image_data'],
-      numerical=data['train']['numerical'],
-      targets=data['train']['targets'],
-      shuffle=True,
-      batch_size=args.batch_size,
-    )
-
-    val_generator = GrayscaleDataGenerator(
-      images=data['val']['image_data'],
-      numerical=data['val']['numerical'],
-      targets=data['val']['targets'],
-      shuffle=False,
-      batch_size=args.batch_size,
-    )
-
-    # Instantiate the model
-    model = GrayscaleModel()
+  # Get the appropriate model
+  model = get_model(args.matching_method)
+  
+  # Get the appropriate data loader
+  data_loader = get_data_loader(
+    data_path=args.data_path,
+    train_split=args.train_split,
+    validation_split=args.validation_split,
+    seed=args.seed,
+    matching_method=args.matching_method,
+    num_matches=args.num_matches
+  )
+  
+  # Load data
+  data = data_loader.load_data()
+  
+  # Create data generators
+  train_generator = get_train_generator(
+    data['train'],
+    args.batch_size,
+    args.matching_method,
+    shuffle=True
+  )
+  
+  val_generator = get_train_generator(
+    data['val'],
+    args.batch_size,
+    args.matching_method,
+    shuffle=False
+  )      
 
   # Get the optimizer
   optimizer = get_optimizer(args.optimizer, args.lr)
+
+  # Get loss function
+  loss_function = get_loss_function(args.loss)
 
   # Train the model
   model, history = train_model(
@@ -144,7 +52,7 @@ def main(args):
     train_generator=train_generator,
     val_generator=val_generator,
     optimizer=optimizer,
-    loss=quaternion_loss,
+    loss=loss_function,
     epochs=args.epochs,
   )
 
@@ -167,3 +75,43 @@ def main(args):
   if args.model_save_path:
     model.save(args.model_save_path)
     print(f"Model saved to {args.model_save_path}")
+    
+def train_model(
+  model,
+  train_generator,
+  val_generator,
+  optimizer,
+  loss,
+  epochs,
+):
+  """Train the given model with the provided data generators."""
+  model.compile(
+    optimizer=optimizer,
+    loss=loss,
+    metrics=['mae'],
+  )
+
+  # Define callbacks
+  callbacks = [
+      tf.keras.callbacks.ReduceLROnPlateau(
+          monitor='val_loss',
+          factor=0.5,
+          patience=5,
+          min_lr=1e-6
+      ),
+      tf.keras.callbacks.EarlyStopping(
+          monitor='val_loss',
+          patience=15,
+          restore_best_weights=True
+      )
+  ]
+
+  # Train the model
+  history = model.fit(
+    train_generator,
+    validation_data=val_generator,
+    epochs=epochs,
+    #callbacks=callbacks,
+  )
+
+  return model, history

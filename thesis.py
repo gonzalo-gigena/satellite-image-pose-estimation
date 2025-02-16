@@ -47,6 +47,9 @@ def parse_args():
   parser.add_argument('--optimizer', type=str, default='adam',
                       choices=['adam', 'sgd', 'rmsprop'],
                       help='Optimizer for training')
+  parser.add_argument('--loss', type=str, default='quaternion',
+                      choices=['quaternion', 'angular', 'detailed'],
+                      help='Loss function for training')
   
   # Output parameters
   parser.add_argument('--model_save_path', type=str, default=None,
