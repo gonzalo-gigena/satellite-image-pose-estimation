@@ -102,6 +102,10 @@ python thesis.py --data_path <path_to_dataset> [options]
   - **Choices**: `'adam'`, `'sgd'`, `'rmsprop'`
   - **Default**: `'adam'`
 
+- `--loss` *(str)*: Loss function for training.
+  - **Choices**: `'quaternion'`, `'angular'`, `'detailed'`
+  - **Default**: `'quaternion'`
+
 #### Output Parameters
 
 - `--model_save_path` *(str)*: Path to save the trained model.
