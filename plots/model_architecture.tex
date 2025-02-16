@@ -1,0 +1,211 @@
+\documentclass[border=8pt, multi, tikz]{standalone} 
+\usepackage{import}
+\subimport{../layers/}{init}
+\usetikzlibrary{positioning}
+\usetikzlibrary{3d} %for including external image 
+
+\def\ConvColor{rgb:yellow,5;red,2.5;white,5}
+\def\ConvReluColor{rgb:yellow,5;red,5;white,5}
+\def\PoolColor{rgb:red,1;black,0.3}
+\def\UnpoolColor{rgb:blue,2;green,1;black,0.3}
+\def\FcColor{rgb:blue,5;red,2.5;white,5}
+\def\FcReluColor{rgb:blue,5;red,5;white,4}
+\def\SoftmaxColor{rgb:magenta,5;black,7}   
+\def\SumColor{rgb:blue,5;green,15}
+
+\newcommand{\copymidarrow}{\tikz \draw[-Stealth,line width=0.8mm,draw={rgb:blue,4;red,1;green,1;black,3}] (-0.3,0) -- ++(0.3,0);}
+
+\begin{document}
+\begin{tikzpicture}
+\tikzstyle{connection}=[ultra thick,every node/.style={sloped,allow upside down},draw=\edgecolor,opacity=0.7]
+\tikzstyle{copyconnection}=[ultra thick,every node/.style={sloped,allow upside down},draw={rgb:blue,4;red,1;green,1;black,3},opacity=0.7]
+
+\node[canvas is zy plane at x=0] (temp) at (-3,0,0) {\includegraphics[width=8cm,height=8cm]{./image.jpg}};
+
+% Image Encoder Branch
+\pic[shift={(0,0,0)}] at (0,0,0) {
+    RightBandedBox={
+        name=conv1,
+        caption=Image Encoder,
+        xlabel={{32, 32}},
+        zlabel=500,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=40,
+        width={2, 2},
+        depth=40
+    }
+};
+
+\pic[shift={(1,0,0)}] at (conv1-east) {
+    Box={
+        name=pool1,
+        caption=,
+        fill=\PoolColor,
+        opacity=0.5,
+        height=32,
+        width=1,
+        depth=32
+    }
+};
+
+\pic[shift={(1,0,0)}] at (pool1-east) {
+    RightBandedBox={
+        name=conv2,
+        caption=,
+        xlabel={{64, 64}},
+        zlabel=256,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=32,
+        width={3.5, 3.5},
+        depth=32
+    }
+};
+
+\pic[shift={(1,0,0)}] at (conv2-east) {
+    Box={
+        name=pool2,
+        caption=,
+        fill=\PoolColor,
+        opacity=0.5,
+        height=24,
+        width=1,
+        depth=24
+    }
+};
+
+% Time Encoder Branch - Added input block with labels
+\pic[shift={(0,-6,10)}] at (0,0,0) {
+    Box={
+        name=time_input,
+        caption=Timestamp,
+        xlabel={{1}},
+        zlabel=1,
+        fill=\FcColor,
+        opacity=0.7,
+        height=3,
+        width=3,
+        depth=20
+    }
+};
+
+\pic[shift={(2,0,0)}] at (time_input-east) {
+    RightBandedBox={
+        name=time_fc,
+        caption=Time Encoder,
+        xlabel={{32, 32}},
+        zlabel=32,
+        fill=\FcColor,
+        bandfill=\FcReluColor,
+        height=20,
+        width={2, 2},
+        depth=20
+    }
+};
+
+% Position Encoder Branch - Added input block with labels
+\pic[shift={(0,-11,20)}] at (0,0,0) {
+    Box={
+        name=pos_input,
+        caption=Position,
+        xlabel={{1}},
+        zlabel=3,
+        fill=\FcColor,
+        opacity=0.7,
+        height=3,
+        width=3,
+        depth=32
+    }
+};
+
+\pic[shift={(2,0,0)}] at (pos_input-east) {
+    RightBandedBox={
+        name=pos_fc1,
+        caption=Position Encoder,
+        xlabel={{64, 64}},
+        zlabel=128,
+        fill=\FcColor,
+        bandfill=\FcReluColor,
+        height=32,
+        width={3, 3},
+        depth=32
+    }
+};
+
+\pic[shift={(2,0,0)}] at (pos_fc1-east) {
+    RightBandedBox={
+        name=pos_fc2,
+        caption=,
+        xlabel={{32, 32}},
+        zlabel=64,
+        fill=\FcColor,
+        bandfill=\FcReluColor,
+        height=24,
+        width={2.5, 2.5},
+        depth=24
+    }
+};
+
+% Concatenation and Final Prediction
+\pic[shift={(4,0,0)}] at (pool2-east) {
+    Box={
+        name=concat,
+        caption=Concat,
+        fill=\SumColor,
+        opacity=0.7,
+        height=30,
+        width=1,
+        depth=30
+    }
+};
+
+\pic[shift={(2,0,0)}] at (concat-east) {
+    RightBandedBox={
+        name=quat_pred,
+        caption=Quaternion Predictor,
+        xlabel={{4, 4}},
+        zlabel=128,
+        fill=\ConvColor,
+        bandfill=\ConvReluColor,
+        height=25,
+        width={3, 3},
+        depth=25
+    }
+};
+
+\pic[shift={(2,0,0)}] at (quat_pred-east) {
+    Box={
+        name=output,
+        caption=Output,
+        xlabel={{1}},
+        zlabel=4,
+        fill=\ConvColor,
+        opacity=0.7,
+        height=3,
+        width=3,
+        depth=25
+    }
+};
+
+% Connections for main path
+\draw [connection] (conv1-east) -- node {\midarrow} (pool1-west);
+\draw [connection] (pool1-east) -- node {\midarrow} (conv2-west);
+\draw [connection] (conv2-east) -- node {\midarrow} (pool2-west);
+\draw [connection] (pool2-east) -- node {\midarrow} (concat-west);
+
+% Connections including new input blocks
+\draw [connection] (time_input-east) -- node {\midarrow} (time_fc-west);
+%\draw [connection] (time_fc-east) -- ++(8.9,0) |- node[pos=0.75] {\midarrow} (concat-west);
+%\draw [connection] (pos_fc2-east) -- ++(9,0) |- node[pos=0.75] {\midarrow} (concat-west);
+\draw [connection]  (time_fc-east) -- node{\midarrow}(concat-near);
+\draw [connection]  (pos_fc2-east) -- node{\midarrow}(concat-near);
+
+\draw [connection] (pos_input-east) -- node {\midarrow} (pos_fc1-west);
+\draw [connection] (pos_fc1-east) -- node {\midarrow} (pos_fc2-west);
+
+\draw [connection] (concat-east) -- node {\midarrow} (quat_pred-west);
+\draw [connection] (quat_pred-east) -- node {\midarrow} (output-west);
+
+\end{tikzpicture}
+\end{document}

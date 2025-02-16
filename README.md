@@ -1,5 +1,10 @@
 # satellite-image-pose-estimation
 
+## Model Architecture
+<p align="center">
+  <img src="./plots/model_architecture.jpg">
+</p>
+
 ## Micromamba Setup Guide
 
 This guide provides step-by-step instructions to install and set up **micromamba**, a lightweight package manager for managing Conda environments. Micromamba is a tiny version of the Mamba package manager that can be installed without admin rights and is suitable for use in containers or continuous integration pipelines.
