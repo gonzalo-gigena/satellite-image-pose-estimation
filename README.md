@@ -78,14 +78,13 @@ python thesis.py --data_path <path_to_dataset> [options]
   - **Default**: `0.0`
   - Must be between `0` and `1`.
 
-- `--matching_method` *(str)*: Feature matching method to be used.
-  - **Choices**: `'light_glue'`
-  - **Default**: `'light_glue'`
-  - If specified, you must also provide `--num_matches`.
+- `--model` *(str)*: Feature matching method to be used.
+  - **Choices**: `'grayscale'`, `'light_glue'`
+  - **Default**: `'grayscale'`
 
 - `--num_matches` *(int)*: Desired fixed number of matches for feature matching.
   - **Default**: `100`
-  - Required if `--matching_method` is specified.
+  - Required if `--model` is `'light_glue'`.
 
 #### Training Parameters
 
@@ -95,7 +94,7 @@ python thesis.py --data_path <path_to_dataset> [options]
 - `--epochs` *(int)*: Number of epochs for training.
   - **Default**: `100`
 
-- `--learning_rate` *(float)*: Learning rate for the optimizer.
+- `--lr` *(float)*: Learning rate for the optimizer.
   - **Default**: `0.001`
 
 - `--optimizer` *(str)*: Optimizer to be used for training.
@@ -124,10 +123,10 @@ python thesis.py --data_path <path_to_dataset> [options]
 #### Example 1: Basic Usage with LightGlue Matching
 
 ```bash
-python thesis.py --data_path ../CubeSats/SyntheticImages --matching_method light_glue --num_matches 100
+python thesis.py --data_path ../satellite-image-generation/SyntheticImages --model light_glue --num_matches 100
 ```
 
-This command runs the script with the dataset located at `../CubeSats/SyntheticImages`, using `light_glue` for feature matching with `100` matches.
+This command runs the script with the dataset located at `../satellite-image-generation/SyntheticImages`, using `light_glue` for feature matching with `100` matches.
 
 #### Example 2: Customized Training Parameters
 
@@ -148,6 +147,6 @@ This command specifies a dataset, increases the batch size to `64`, sets the lea
 
 - **Environment Variables**: The script modifies environment variables that are crucial for TensorFlow to find CUDA libraries. If you encounter issues, double-check the paths and adjust `cuda_env_path` accordingly.
 
-- **Feature Matching Dependency**: Currently, the only supported `--matching_method` is `'light_glue'`. Ensure that the necessary dependencies for LightGlue are installed and accessible.
+- **Feature Matching Dependency**: Currently, only `'light_glue'` is supported. Ensure that the necessary dependencies for LightGlue are installed and accessible.
 
 ---

@@ -10,7 +10,7 @@ def main(args):
       args (argparse.Namespace): Parsed command-line arguments.
   """
   # Get the appropriate model
-  model = get_model(args.matching_method)
+  model = get_model(args.model)
   
   # Get the appropriate data loader
   data_loader = get_data_loader(
@@ -18,7 +18,7 @@ def main(args):
     train_split=args.train_split,
     validation_split=args.validation_split,
     seed=args.seed,
-    matching_method=args.matching_method,
+    model=args.model,
     num_matches=args.num_matches
   )
   
@@ -29,14 +29,14 @@ def main(args):
   train_generator = get_train_generator(
     data['train'],
     args.batch_size,
-    args.matching_method,
+    args.model,
     shuffle=True
   )
   
   val_generator = get_train_generator(
     data['val'],
     args.batch_size,
-    args.matching_method,
+    args.model,
     shuffle=False
   )      
 

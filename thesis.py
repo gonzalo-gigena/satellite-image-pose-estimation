@@ -9,8 +9,8 @@ def setup_environment():
   os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Show only errors
   cuda_env_path = os.path.abspath('../micromamba/envs/thesis')
   os.environ['XLA_FLAGS'] = f'--xla_gpu_cuda_data_dir={cuda_env_path}'
-  os.environ['LD_LIBRARY_PATH'] = f"{cuda_env_path}/lib:" + os.environ.get('LD_LIBRARY_PATH', '')
-  os.environ['PATH'] = f"{cuda_env_path}/bin:" + os.environ.get('PATH', '')
+  os.environ['LD_LIBRARY_PATH'] = f'{cuda_env_path}/lib:' + os.environ.get('LD_LIBRARY_PATH', '')
+  os.environ['PATH'] = f'{cuda_env_path}/bin:' + os.environ.get('PATH', '')
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   if gpus:
@@ -31,8 +31,8 @@ def parse_args():
                       help='Ratio of training data split')
   parser.add_argument('--validation_split', type=float, default=0.0,
                       help='Ratio of validation data split')
-  parser.add_argument('--matching_method', type=str, default=None,
-                      choices=[None, 'light_glue'],
+  parser.add_argument('--model', type=str, default='grayscale',
+                      choices=['grayscale', 'light_glue'],
                       help='Feature matching method')
   parser.add_argument('--num_matches', type=int, default=None,
                       help='desired fixed number of matches')
@@ -65,29 +65,21 @@ def parse_args():
   
   # Argument validation
   if not 0 <= args.train_split <= 1:
-    parser.error("Train split must be between 0 and 1.")
+    parser.error('Train split must be between 0 and 1.')
   if not 0 <= args.validation_split <= 1:
-    parser.error("Validation split must be between 0 and 1.")
+    parser.error('Validation split must be between 0 and 1.')
 
   # Handle dependencies between arguments
-  if args.matching_method is not None:
+  if args.matching_method == 'light_glue':
     if args.num_matches is None:
-      parser.error("--num_matches is required when --matching_method is specified.")
+      parser.error('--num_matches is required when --model is "light_glue".')
   else:
     if args.num_matches is not None:
-      parser.error("--num_matches should not be set when --matching_method is not specified.")
+      parser.error('--num_matches should not be set when --model is not "light_glue".')
   
   return args
 
-"""
-Example usage
-python thesis.py --data_path ../CubeSats/SyntheticImages --matching_method light_glue --num_matches 100
-python thesis.py --data_path /path/to/data \
-                --batch_size 64 \
-                --learning_rate 0.001 \
-                --epochs 200
-"""
-if __name__ == "__main__":
+if __name__ == '__main__':
   setup_environment()
   args = parse_args()
   main(args)
