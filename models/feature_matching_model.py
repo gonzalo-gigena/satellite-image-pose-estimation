@@ -67,37 +67,3 @@ class FeatureMatchingModel(tf.keras.Model):
     q1_normalized = tf.math.l2_normalize(q1, axis=-1)
     
     return tf.concat([q0_normalized, q1_normalized], axis=-1)
-
-class DataGenerator(tf.keras.utils.Sequence):
-  def __init__(self, points, numerical, targets, shuffle, batch_size=32):
-    # Convert image_data to a padded tensor
-    self.points = tf.ragged.constant(points).to_tensor()
-    self.numerical = tf.convert_to_tensor(numerical, dtype=tf.float32)
-    self.targets = tf.convert_to_tensor(targets, dtype=tf.float32)
-    self.batch_size = batch_size
-    self.indexes = np.arange(len(self.targets))
-    self.shuffle = shuffle
-
-    # If shuffle is True, shuffle the indices right away
-    if self.shuffle:
-      np.random.shuffle(self.indexes)
-
-  def on_epoch_end(self):
-    """Called at the end of every epoch"""
-    if self.shuffle:
-      np.random.shuffle(self.indexes)
-    
-  def __len__(self):
-    return int(np.ceil(len(self.points) / self.batch_size))
-  
-  def __getitem__(self, idx):
-    batch_slice = slice(idx * self.batch_size, (idx + 1) * self.batch_size)
-    
-    batch_image_data = self.points[batch_slice]
-    batch_numerical = self.numerical[batch_slice]
-    batch_targets = self.targets[batch_slice]
-    
-    return {
-      'image_data': batch_image_data,
-      'numerical': batch_numerical
-    }, batch_targets

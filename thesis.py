@@ -70,7 +70,7 @@ def parse_args():
     parser.error('Validation split must be between 0 and 1.')
 
   # Handle dependencies between arguments
-  if args.matching_method == 'light_glue':
+  if args.model == 'light_glue':
     if args.num_matches is None:
       parser.error('--num_matches is required when --model is "light_glue".')
   else:

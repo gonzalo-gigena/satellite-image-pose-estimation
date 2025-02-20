@@ -1,12 +1,11 @@
 import tensorflow as tf
 
-from data_loader import MatchingDataLoader, GrayscaleDataLoader
+from models.data_loader import MatchingDataLoader, GrayscaleDataLoader
+from models.data_generator import MatchingDataGenerator, GrayscaleDataGenerator
 from models.feature_matching_model import (
-  DataGenerator as MatchingDataGenerator,
   FeatureMatchingModel
 )
 from models.grayscale_model import (
-  DataGenerator as GrayscaleDataGenerator,
   GrayscaleModel
 )
 
@@ -43,15 +42,7 @@ def get_optimizer(optimizer_name, learning_rate):
 
 
 def get_model(model):
-  """Select and return the appropriate model based on the matching method.
-  
-  Args:
-      matching_method (str, optional): The matching method to use. 
-          If None, returns GrayscaleModel.
-  
-  Returns:
-      tf.keras.Model: The selected model instance.
-  """
+  """Select and return the appropriate model."""
   if model == 'light_glue':
     return FeatureMatchingModel()
   return GrayscaleModel()
@@ -105,7 +96,8 @@ def get_train_generator(data, batch_size, model, shuffle=True,  augment=False):
       numerical=data['numerical'],
       targets=data['targets'],
       shuffle=shuffle,
-      batch_size=batch_size
+      batch_size=batch_size,
+      augment=augment
     )
   return GrayscaleDataGenerator(
     images=data['image_data'],
