@@ -58,7 +58,7 @@ micromamba deactivate
 Run the script using the command line:
 
 ```bash
-python main.py --data_path <path_to_dataset> [options]
+python src/main.py --data_path <path_to_dataset> [options]
 ```
 
 ### Options
@@ -89,21 +89,17 @@ python main.py --data_path <path_to_dataset> [options]
 #### Example 1: Basic Usage with LightGlue Matching
 
 ```bash
-python main.py --data_path ../satellite-image-generation/SyntheticImages --model light_glue --num_matches 100
+python src/main.py --data_path ../satellite-image-generation/SyntheticImages --model light_glue --num_matches 100
 ```
-
-This command runs the script with the dataset located at `../satellite-image-generation/SyntheticImages`, using `light_glue` for feature matching with `100` matches.
 
 #### Example 2: Customized Training Parameters
 
 ```bash
-python main.py --data_path /path/to/data \
+python src/main.py --data_path /path/to/data \
                  --batch_size 64 \
                  --lr 0.001 \
                  --epochs 200
 ```
-
-This command specifies a dataset, increases the batch size to `64`, sets the learning rate to `0.001`, and trains for `200` epochs.
 
 ---
 
