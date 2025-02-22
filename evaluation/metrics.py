@@ -96,7 +96,7 @@ def analyze_model_performance(model, history, test_data, test_targets):
     predictions = model.predict(test_data)
     
     # Plot quaternion distributions
-    plot_quaternion_distribution(predictions, test_targets)
+    #plot_quaternion_distribution(predictions, test_targets)
     
     # Calculate test set metrics
     test_loss = model.evaluate(test_data, test_targets)

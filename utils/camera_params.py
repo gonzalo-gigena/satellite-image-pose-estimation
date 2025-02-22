@@ -1,7 +1,6 @@
 import numpy as np
 
-# Camera Module v2 for raspberry pi
-camera_parameters = {
+""" Camera Module v2 for raspberry pi
   'Net price': '$25',
   'Size': 'Around 25 × 24 × 9 mm',
   'Weight': '3g',
@@ -21,7 +20,7 @@ camera_parameters = {
   'Maximum exposure time (seconds)': '11.76',
   'Lens Mount': 'N/A',
   'NoIR version available?': 'Yes'
-}
+"""
 
 def get_camera_matrix():
   # Physical sensor specifications

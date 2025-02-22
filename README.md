@@ -58,72 +58,38 @@ micromamba deactivate
 Run the script using the command line:
 
 ```bash
-python thesis.py --data_path <path_to_dataset> [options]
+python main.py --data_path <path_to_dataset> [options]
 ```
 
-### Required Arguments
+### Options
 
-- `--data_path` *(str)*: **Path to the dataset**.
-  - This argument specifies the location of your dataset that will be used for training.
+| Argument             | Type    | Description                                             | Default      | Choices                          | Required |
+|----------------------|--------|---------------------------------------------------------|-------------|----------------------------------|----------|
+| `--data_path`       | `str`  | Path to the dataset                                    | N/A         | N/A                              | ✅        |
+| **Data** |        |                                                         |             |                                  |          |
+| `--train_split`     | `float` | Ratio of the dataset to be used for training           | `0.8`       | `0` to `1`                      | ❌        |
+| `--validation_split`| `float` | Ratio of the dataset to be used for validation         | `0.0`       | `0` to `1`                      | ❌        |
+| `--model`          | `str`  | Feature matching method                                 | `'grayscale'` | `'grayscale'`, `'light_glue'` | ❌        |
+| `--num_matches`    | `int`  | Fixed number of matches (Required if `--model` is `'light_glue'`) | `100` | N/A                              | ❌        |
+| **Training** |     |                                                         |             |                                  |          |
+| `--batch_size`      | `int`  | Batch size for training                               | `32`        | N/A                              | ❌        |
+| `--epochs`         | `int`  | Number of epochs for training                         | `100`       | N/A                              | ❌        |
+| `--lr`            | `float` | Learning rate for the optimizer                      | `0.001`     | N/A                              | ❌        |
+| `--optimizer`     | `str`  | Optimizer to be used for training                     | `'adam'`    | `'adam'`, `'sgd'`, `'rmsprop'`  | ❌        |
+| `--loss`         | `str`  | Loss function for training                           | `'quaternion'` | `'quaternion'`, `'angular'`, `'detailed'` | ❌  |
+| **Output** |      |                                                         |             |                                  |          |
+| `--model_save_path`| `str`  | Path to save the trained model                         | N/A         | N/A                              | ❌        |
+| `--log_dir`       | `str`  | Directory to store TensorBoard logs                   | `'./logs'`  | N/A                              | ❌        |
+| **Miscellaneous** | |                                                   |             |                                  |          |
+| `--seed`          | `int`  | Random seed for reproducibility                        | `42`        | N/A                              | ❌        |
 
-### Optional Arguments
-
-#### Data Parameters
-
-- `--train_split` *(float)*: Ratio of the dataset to be used for training.
-  - **Default**: `0.8`
-  - Must be between `0` and `1`.
-
-- `--validation_split` *(float)*: Ratio of the dataset to be used for validation.
-  - **Default**: `0.0`
-  - Must be between `0` and `1`.
-
-- `--model` *(str)*: Feature matching method to be used.
-  - **Choices**: `'grayscale'`, `'light_glue'`
-  - **Default**: `'grayscale'`
-
-- `--num_matches` *(int)*: Desired fixed number of matches for feature matching.
-  - **Default**: `100`
-  - Required if `--model` is `'light_glue'`.
-
-#### Training Parameters
-
-- `--batch_size` *(int)*: Batch size for training.
-  - **Default**: `32`
-
-- `--epochs` *(int)*: Number of epochs for training.
-  - **Default**: `100`
-
-- `--lr` *(float)*: Learning rate for the optimizer.
-  - **Default**: `0.001`
-
-- `--optimizer` *(str)*: Optimizer to be used for training.
-  - **Choices**: `'adam'`, `'sgd'`, `'rmsprop'`
-  - **Default**: `'adam'`
-
-- `--loss` *(str)*: Loss function for training.
-  - **Choices**: `'quaternion'`, `'angular'`, `'detailed'`
-  - **Default**: `'quaternion'`
-
-#### Output Parameters
-
-- `--model_save_path` *(str)*: Path to save the trained model.
-  - If not specified, the model will not be saved.
-
-- `--log_dir` *(str)*: Directory to store TensorBoard logs.
-  - **Default**: `'./logs'`
-
-#### Miscellaneous Parameters
-
-- `--seed` *(int)*: Random seed for reproducibility.
-  - **Default**: `42`
 
 ### Examples
 
 #### Example 1: Basic Usage with LightGlue Matching
 
 ```bash
-python thesis.py --data_path ../satellite-image-generation/SyntheticImages --model light_glue --num_matches 100
+python main.py --data_path ../satellite-image-generation/SyntheticImages --model light_glue --num_matches 100
 ```
 
 This command runs the script with the dataset located at `../satellite-image-generation/SyntheticImages`, using `light_glue` for feature matching with `100` matches.
@@ -131,9 +97,9 @@ This command runs the script with the dataset located at `../satellite-image-gen
 #### Example 2: Customized Training Parameters
 
 ```bash
-python thesis.py --data_path /path/to/data \
+python main.py --data_path /path/to/data \
                  --batch_size 64 \
-                 --learning_rate 0.001 \
+                 --lr 0.001 \
                  --epochs 200
 ```
 

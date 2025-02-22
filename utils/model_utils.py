@@ -1,51 +1,17 @@
-import tensorflow as tf
-
 from models.data_loader import MatchingDataLoader, GrayscaleDataLoader
 from models.data_generator import MatchingDataGenerator, GrayscaleDataGenerator
 from models.feature_matching_model import (
   FeatureMatchingModel
 )
 from models.grayscale_model import (
-  GrayscaleModel
+  GrayscaleModel, ImprovedGrayscaleModel
 )
-
-from models.loss import quaternion_loss, angular_distance_loss, detailed_distance_loss
-
-def get_loss_function(loss_name):
-  """Select and return the loss function based on the given name"""
-  loss_functions = {
-    'quaternion': quaternion_loss,
-    'angular': angular_distance_loss,
-    'detailed': detailed_distance_loss,
-  }
-
-  loss_function = loss_functions.get(loss_name.lower())
-  if loss_function is None:
-    raise ValueError(f"Unsupported loss function: {loss_function}")
-
-  return loss_function
-
-def get_optimizer(optimizer_name, learning_rate):
-  """Select and return the optimizer based on the given name."""
-  optimizers = {
-    'adam': tf.keras.optimizers.Adam,
-    'sgd': tf.keras.optimizers.SGD,
-    'rmsprop': tf.keras.optimizers.RMSprop,
-  }
-
-  optimizer_class = optimizers.get(optimizer_name.lower())
-  if optimizer_class is None:
-    raise ValueError(f"Unsupported optimizer: {optimizer_name}")
-
-  return optimizer_class(learning_rate=learning_rate)
-
-
 
 def get_model(model):
   """Select and return the appropriate model."""
   if model == 'light_glue':
     return FeatureMatchingModel()
-  return GrayscaleModel()
+  return ImprovedGrayscaleModel()
 
 def get_data_loader(data_path, train_split, validation_split, seed, 
                    model, num_matches):
