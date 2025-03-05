@@ -10,12 +10,16 @@ from models.grayscale_model import (
 )
 from models.timeless_model import TimelessModel, TimelessDataLoader
 
+from models.sequence_model import SequenceModel, SequenceDataGenerator
+
 def get_model(model):
   """Select and return the appropriate model."""
   if model == 'light_glue':
     return FeatureMatchingModel()
   if model == 'timeless':
     return TimelessModel()
+  if model == 'sequential':
+    return SequenceModel()
   return ImprovedGrayscaleModel()
 
 def get_data_loader(data_path, train_split, validation_split, seed, 
@@ -71,6 +75,15 @@ def get_train_generator(data, batch_size, model, shuffle=True,  augment=False):
   if model == 'light_glue':
     return MatchingDataGenerator(
       points=data['image_data'],
+      numerical=data['numerical'],
+      targets=data['targets'],
+      shuffle=shuffle,
+      batch_size=batch_size,
+      augment=augment
+    )
+  if model == 'sequential':
+    return SequenceDataGenerator(
+      images=data['image_data'],
       numerical=data['numerical'],
       targets=data['targets'],
       shuffle=shuffle,
