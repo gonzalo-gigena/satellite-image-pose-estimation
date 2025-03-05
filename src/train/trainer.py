@@ -33,7 +33,7 @@ class ModelTrainer:
       self.data['train'],
       self.args.batch_size,
       self.args.model,
-      shuffle=True
+      shuffle=False,
     )
     
     val_generator = get_train_generator(
@@ -62,7 +62,7 @@ class ModelTrainer:
       train_generator,
       validation_data=val_generator,
       epochs=self.args.epochs,
-      #callbacks=get_default_callbacks()
+      callbacks=get_default_callbacks()
     )
     
     return self.model, history

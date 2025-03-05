@@ -47,15 +47,3 @@ class DataGenerator(tf.keras.utils.Sequence):
       'image_data': batch_data,
       'numerical': batch_numerical
     }, batch_targets
-    
-class GrayscaleDataGenerator(DataGenerator):
-  def __init__(self, images, numerical, targets, shuffle, batch_size, augment):
-    self.data = tf.convert_to_tensor(images, dtype=tf.float32)
-    super().__init__(numerical, targets, shuffle, batch_size, augment)
-  
-
-class MatchingDataGenerator(DataGenerator):
-  def __init__(self, points, numerical, targets, shuffle, batch_size, augment):
-    self.data = tf.ragged.constant(points).to_tensor()
-    super().__init__(numerical, targets, shuffle, batch_size, augment)
-    

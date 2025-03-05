@@ -34,7 +34,7 @@ def _add_data_arguments(parser):
   data_group.add_argument('--validation_split', type=float, default=0.0,
                         help='Ratio of validation data split')
   data_group.add_argument('--model', type=str, default='grayscale',
-                        choices=['grayscale', 'light_glue'],
+                        choices=['grayscale', 'light_glue', 'timeless'],
                         help='Feature matching method')
   data_group.add_argument('--num_matches', type=int, default=None,
                         help='desired fixed number of matches')

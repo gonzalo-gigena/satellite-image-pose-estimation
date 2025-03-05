@@ -1,16 +1,21 @@
-from models.data_loader import MatchingDataLoader, GrayscaleDataLoader
-from models.data_generator import MatchingDataGenerator, GrayscaleDataGenerator
 from models.feature_matching_model import (
-  FeatureMatchingModel
+  FeatureMatchingModel, MatchingDataGenerator, MatchingDataLoader
 )
 from models.grayscale_model import (
-  GrayscaleModel, ImprovedGrayscaleModel
+  GrayscaleModel,
+  ImprovedGrayscaleModel,
+  TransferLearningGrayscaleModel,
+  GrayscaleDataGenerator,
+  GrayscaleDataLoader
 )
+from models.timeless_model import TimelessModel, TimelessDataLoader
 
 def get_model(model):
   """Select and return the appropriate model."""
   if model == 'light_glue':
     return FeatureMatchingModel()
+  if model == 'timeless':
+    return TimelessModel()
   return ImprovedGrayscaleModel()
 
 def get_data_loader(data_path, train_split, validation_split, seed, 
@@ -36,6 +41,13 @@ def get_data_loader(data_path, train_split, validation_split, seed,
       seed=seed,
       matching_method=model,
       num_matches=num_matches
+    )
+  if model == 'timeless':
+    return TimelessDataLoader(
+      data_path=data_path,
+      train_split=train_split,
+      validation_split=validation_split,
+      seed=seed
     )
   return GrayscaleDataLoader(
     data_path=data_path,
