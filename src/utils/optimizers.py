@@ -1,6 +1,7 @@
 import tensorflow as tf
+from tensorflow.keras.optimizers import Optimizer
 
-def get_optimizer(optimizer_name, learning_rate):
+def get_optimizer(optimizer_name: str, learning_rate: float) -> Optimizer:
   """Select and return the optimizer based on the given name."""
   optimizers = {
     'adam': tf.keras.optimizers.Adam,

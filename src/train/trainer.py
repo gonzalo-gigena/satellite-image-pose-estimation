@@ -1,52 +1,64 @@
+from typing import Tuple, Dict, Any
+from tensorflow.keras.models import Model
+from tensorflow.keras.callbacks import History
+from tensorflow.keras.optimizers import Optimizer
+from tensorflow.keras.losses import Loss
+
 from utils.model_utils import get_data_loader, get_model, get_train_generator
 from utils.optimizers import get_optimizer
 from utils.loss_functions import get_loss_function
 from .callbacks import get_default_callbacks
+from config.model_config import ModelConfig
+
 
 class ModelTrainer:
   """Handles model training and evaluation pipeline."""
   
-  def __init__(self, args):
-    """Initialize trainer with command line arguments."""
-    self.args = args
-    self.model = get_model(args.model)
-    self.data = self._load_data()
-    self.optimizer = get_optimizer(args.optimizer, args.lr)
-    self.loss_function = get_loss_function(args.loss)
+  def __init__(self, config: ModelConfig) -> None:
+    """Initialize trainer with configuration."""
+    self.config = config
+    self.model: Model = get_model(config.model)
+    self.data: Dict[str, Dict[str, Any]] = self._load_data()
+    self.optimizer: Optimizer = get_optimizer(config.optimizer, config.lr)
+    self.loss_function: Loss = get_loss_function(config.loss)
     
-  def _load_data(self):
-    """Load and prepare data for training."""
-    data_loader = get_data_loader(
-      data_path=self.args.data_path,
-      train_split=self.args.train_split,
-      validation_split=self.args.validation_split,
-      seed=self.args.seed,
-      model=self.args.model,
-      num_matches=self.args.num_matches
-    )
+  def _load_data(self) -> Dict[str, Dict[str, Any]]:
+    """Load and prepare data for training.
     
+    Returns:
+      Dictionary containing train/val data splits
+    """
+    data_loader = get_data_loader(self.config)
     return data_loader.load_data()
     
-  def _create_generators(self):
-    """Create training and validation data generators."""
+  def _create_generators(self) -> Tuple[Any, Any]:  # Replace Any with actual generator types
+    """Create training and validation data generators.
+    
+    Returns:
+      Tuple of (train_generator, val_generator)
+    """
     train_generator = get_train_generator(
       self.data['train'],
-      self.args.batch_size,
-      self.args.model,
+      self.config.batch_size,
+      self.config.model,
       shuffle=False,
     )
     
     val_generator = get_train_generator(
       self.data['val'],
-      self.args.batch_size,
-      self.args.model,
+      self.config.batch_size,
+      self.config.model,
       shuffle=False
     )
     
     return train_generator, val_generator
     
-  def train(self):
-    """Execute the training pipeline."""
+  def train(self) -> Tuple[Model, History]:
+    """Execute the training pipeline.
+    
+    Returns:
+      Tuple of (trained_model, training_history)
+    """
     # Create data generators
     train_generator, val_generator = self._create_generators()
     
@@ -61,14 +73,14 @@ class ModelTrainer:
     history = self.model.fit(
       train_generator,
       validation_data=val_generator,
-      epochs=self.args.epochs,
+      epochs=self.config.epochs,  # Fixed: was self.args.epochs
       callbacks=get_default_callbacks()
     )
     
     return self.model, history
     
-  def save_model(self):
+  def save_model(self) -> None:
     """Save the trained model if path is specified."""
-    if self.args.model_save_path:
-      self.model.save(self.args.model_save_path)
-      print(f"Model saved to {self.args.model_save_path}")
+    if self.config.model_save_path:
+      self.model.save(self.config.model_save_path)  # Fixed: was self.args.model_save_path
+      print(f"Model saved to {self.config.model_save_path}")

@@ -1,92 +1,125 @@
 import os
+from typing import List, Dict, Tuple
 import numpy as np
+from numpy.typing import NDArray
 
-from datetime import datetime
+from config.model_config import ModelConfig
+
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
+
 class DataLoader:
-  def __init__(self, data_path, train_split, validation_split, seed, channels=1):
+  """Base class for loading and processing data."""
+
+  def __init__(self, config: ModelConfig) -> None:
     """
-    Initialize DataLoader with configuration
+    Initialize DataLoader with configuration.
 
     Args:
       data_path: Path to the data directory
       train_split: Proportion of data to use for training
       validation_split: Proportion of data to use for validation
       seed: Random seed for data splitting
+      channels: Number of image channels (1 for grayscale, 3 for RGB)
+      burst: Number of burst images
     """
-    self.data_path = data_path
-    self.train_split = train_split
-    self.validation_split = validation_split
-    self.seed = seed
-    self.channels = channels
+    self.data_path = config.data_path
+    self.train_split = config.train_split
+    self.validation_split = config.validation_split
+    self.seed = config.seed
+    self.channels = config.channels
+    self.burst = config.burst
 
-  def load_data(self):
-    """Load data based on file extension and type"""
+  def load_data(self) -> Dict[str, Dict[str, NDArray[np.floating]]]:
+    """Load data based on file extension and type.
 
+    Returns:
+      Dictionary containing train and validation data splits
+    """
     # Get all filenames in the folder
-    files = os.listdir(self.data_path)
-
+    files: List[str] = os.listdir(self.data_path)
     return self._process_data(files)
 
-  def _process_data(self, files):
+  def _process_data(self, files: List[str]) -> Dict[str, Dict[str, NDArray[np.floating]]]:
     """
     Abstract method to process the loaded data.
     Must be implemented by subclasses.
+
+    Args:
+      files: List of filenames to process
+
+    Returns:
+      Processed data dictionary
     """
     raise NotImplementedError("Subclasses must implement this method")
 
-  def _extract_data_from_filename(self, filename):
+  def _extract_data_from_filename(self, filename: str) -> Tuple[str, str, str, str, NDArray[np.floating], NDArray[np.floating]]:
     """
-    Extract timestamp, satellite position, and rotation from filename
+    Extract timestamp, satellite position, and rotation from filename.
 
     Args:
       filename: Name of the image file
 
     Returns:
-      timestamp: Float representing the time
-      sat_pos: Numpy array of satellite position
-      sat_rot: Numpy array of satellite rotation (quaternion)
+      Tuple containing:
+        - i: Satellite index
+        - j: Number of bursts
+        - k: Burst index
+        - elapsed_time: Time elapsed
+        - sat_pos: Numpy array of satellite position
+        - sat_rot: Numpy array of satellite rotation (quaternion)
     """
     # Extract the relevant parts of the filename
-    name_parts = filename.split('_')
+    # filePath = $"{screenshotFolder}/{sat.name}_{sat.index}_{sat.numBurst}_{sat.burstIndex}_{sat.time}_{satPos}_{satRot}.jpg";
+    file_name_parts: List[str] = filename.split('_')
 
-    date_str = name_parts[1]
-    sat_pos = np.array(list(map(float, name_parts[2].split(','))))
-    sat_rot = np.array(list(map(float, name_parts[3].replace('.jpg', '').split(','))))
+    _: str = file_name_parts[0]  # satellite name
+    i: str = file_name_parts[1]
+    j: str = file_name_parts[2]
+    k: str = file_name_parts[3]
+    elapsed_time: str = file_name_parts[4]
+    sat_pos: NDArray[np.floating] = np.array(list(map(float, file_name_parts[5].split(','))))
+    sat_rot: NDArray[np.floating] = np.array(list(map(float, file_name_parts[6].replace('.jpg', '').split(','))))
 
-    # Convert date to timestamp
-    date_time = datetime.strptime(date_str, "%d-%m-%Y %H:%M:%S.%f")
-    timestamp = date_time.timestamp()  # This gives you a float representing the time
+    # TODO: normalize elapsed_time [0, 1)
+    return i, j, k, elapsed_time, sat_pos, sat_rot
 
-    return timestamp, sat_pos, sat_rot
-
-  def _get_pixels(self, filename):
+  def _get_pixels(self, filename: str) -> NDArray[np.floating]:
     """
-    Load an image, normalize, and flatten the pixel values
+    Load an image, normalize, and return the pixel values.
 
     Args:
       filename: Name of the image file
 
     Returns:
-      Flattened numpy array
+      Normalized image array
     """
-    image_path = os.path.join(self.data_path, filename)
+    image_path: str = os.path.join(self.data_path, filename)
+
     # Load the image
-    img = load_img(image_path, color_mode='grayscale') if self.channels == 1 else load_img(image_path)
+    if self.channels == 1:
+      img = load_img(image_path, color_mode='grayscale')
+    else:
+      img = load_img(image_path)
+
     # Convert image to array and normalize
-    img_array = img_to_array(img) / 255.0
+    img_array: NDArray[np.floating] = img_to_array(img) / 255.0
     return img_array
 
-  def _split_data(self, points, numerical_data, targets):
+  def _split_data(
+    self,
+    points: NDArray[np.floating],
+    numerical_data: NDArray[np.floating],
+    targets: NDArray[np.floating]
+  ) -> Dict[str, Dict[str, NDArray[np.floating]]]:
     """
-    Split the data into training and validation sets
+    Split the data into training and validation sets.
 
     Args:
-      points: numpy array of data (e.g., matched keypoints or pixels)
-      numerical_data: numpy array of numerical features (timestamps, satellite positions)
-      targets: numpy array of target values (satellite rotations)
+      points: Numpy array of data (e.g., matched keypoints or pixels)
+      numerical_data: Numpy array of numerical features (timestamps, satellite positions)
+      targets: Numpy array of target values (satellite rotations)
 
     Returns:
       Dictionary containing train and validation splits for all data types

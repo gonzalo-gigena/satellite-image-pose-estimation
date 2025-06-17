@@ -1,6 +1,5 @@
-from models.feature_matching_model import (
-  FeatureMatchingModel, MatchingDataGenerator, MatchingDataLoader
-)
+from typing import Union, Dict, Any
+from config.model_config import ModelConfig
 from models.grayscale_model import (
   GrayscaleModel,
   ImprovedGrayscaleModel,
@@ -10,86 +9,47 @@ from models.grayscale_model import (
 )
 from models.timeless_model import TimelessModel, TimelessDataLoader
 
-from models.sequence_model import SequenceModel, SequenceDataGenerator
 
-def get_model(model):
+def get_model(model: str) -> Union[TimelessModel, ImprovedGrayscaleModel]:
   """Select and return the appropriate model."""
-  if model == 'light_glue':
-    return FeatureMatchingModel()
   if model == 'timeless':
     return TimelessModel()
-  if model == 'sequential':
-    return SequenceModel()
   return ImprovedGrayscaleModel()
 
-def get_data_loader(data_path, train_split, validation_split, seed, 
-                   model, num_matches):
+
+def get_data_loader(config: ModelConfig) -> Union[TimelessDataLoader, GrayscaleDataLoader]:
   """Select and return the appropriate data loader based on the matching method.
   
   Args:
-    data_path (str): Path to the data directory
-    train_split (float): Proportion of data to use for training
-    validation_split (float): Proportion of data to use for validation
-    seed (int): Random seed for reproducibility
-    matching_method (str): The model to use
-    num_matches (int, optional): Number of matches to use
+    config: ModelConfig object containing all configuration parameters
   
   Returns:
     DataLoader: The appropriate data loader instance
   """
-  if model == 'light_glue':
-    return MatchingDataLoader(
-      data_path=data_path,
-      train_split=train_split,
-      validation_split=validation_split,
-      seed=seed,
-      matching_method=model,
-      num_matches=num_matches
-    )
-  if model == 'timeless':
-    return TimelessDataLoader(
-      data_path=data_path,
-      train_split=train_split,
-      validation_split=validation_split,
-      seed=seed
-    )
-  return GrayscaleDataLoader(
-    data_path=data_path,
-    train_split=train_split,
-    validation_split=validation_split,
-    seed=seed
-  )
+  if config.model == 'timeless':
+    return TimelessDataLoader(config)
+  return GrayscaleDataLoader(config)
 
-def get_train_generator(data, batch_size, model, shuffle=True,  augment=False):
+
+def get_train_generator(
+  data: Dict[str, Any], 
+  batch_size: int, 
+  model: str, 
+  shuffle: bool = True, 
+  augment: bool = False
+) -> GrayscaleDataGenerator:
   """Create and return the appropriate data generator based on the matching method.
   
   Args:
-    data (dict): Dictionary containing the training data
-    batch_size (int): Batch size for training
-    matching_method (str, optional): The matching method to use
-    shuffle (bool): Whether to shuffle the data
+    data: Dictionary containing the training data with keys 'image_data', 'numerical', 'targets'
+    batch_size: Batch size for training
+    model: Model type identifier (currently unused but kept for future extensibility)
+    shuffle: Whether to shuffle the data
+    augment: Whether to apply data augmentation
   
   Returns:
-    DataGenerator: The appropriate data generator instance
+    GrayscaleDataGenerator: The data generator instance
   """
-  if model == 'light_glue':
-    return MatchingDataGenerator(
-      points=data['image_data'],
-      numerical=data['numerical'],
-      targets=data['targets'],
-      shuffle=shuffle,
-      batch_size=batch_size,
-      augment=augment
-    )
-  if model == 'sequential':
-    return SequenceDataGenerator(
-      images=data['image_data'],
-      numerical=data['numerical'],
-      targets=data['targets'],
-      shuffle=shuffle,
-      batch_size=batch_size,
-      augment=augment
-    )
   return GrayscaleDataGenerator(
     images=data['image_data'],
     numerical=data['numerical'],

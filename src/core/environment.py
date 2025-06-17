@@ -1,7 +1,7 @@
 import os
 import tensorflow as tf
 
-def setup_environment():
+def setup_environment() -> None:
   """Set up environment variables for TensorFlow and CUDA."""
   os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Show only errors
   cuda_env_path = os.path.abspath('../micromamba/envs/thesis')
@@ -11,7 +11,7 @@ def setup_environment():
 
   _setup_gpu()
 
-def _setup_gpu():
+def _setup_gpu() -> None:
   """Configure GPU settings."""
   gpus = tf.config.experimental.list_physical_devices('GPU')
   if gpus:

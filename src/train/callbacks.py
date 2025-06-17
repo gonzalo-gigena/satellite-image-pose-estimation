@@ -1,7 +1,13 @@
+from typing import List
 import tensorflow as tf
 
-def get_default_callbacks():
-  """Return default training callbacks."""
+# TODO: Add configuration
+def get_default_callbacks() -> List[tf.keras.callbacks.Callback]:
+  """Return default training callbacks.
+
+  Returns:
+    List of Keras callbacks for training monitoring and optimization
+  """
   return [
     tf.keras.callbacks.EarlyStopping(
       monitor='val_mae',
