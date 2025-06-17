@@ -14,10 +14,10 @@ def main():
   trainer = ModelTrainer(config)
   model, history = trainer.train()
 
-  analyze_history(history)
+  #analyze_history(history)
   
   # Save model
-  trainer.save_model()
+  #trainer.save_model()
 
 if __name__ == '__main__':
   main()

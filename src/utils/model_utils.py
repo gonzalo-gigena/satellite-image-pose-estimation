@@ -1,20 +1,15 @@
 from typing import Union, Dict, Any
 from config.model_config import ModelConfig
-from models.grayscale_model import (
-  GrayscaleModel,
-  ImprovedGrayscaleModel,
-  TransferLearningGrayscaleModel,
-  GrayscaleDataGenerator,
-  GrayscaleDataLoader
-)
+
 from models.timeless_model import TimelessModel, TimelessDataLoader
+from models.grayscale_model import GrayscaleDataLoader, GrayscaleModel, GrayscaleDataGenerator
+from models.data_loader import DataSplit
 
-
-def get_model(model: str) -> Union[TimelessModel, ImprovedGrayscaleModel]:
+def get_model(model: str) -> Union[TimelessModel, GrayscaleModel]:
   """Select and return the appropriate model."""
   if model == 'timeless':
     return TimelessModel()
-  return ImprovedGrayscaleModel()
+  return GrayscaleModel()
 
 
 def get_data_loader(config: ModelConfig) -> Union[TimelessDataLoader, GrayscaleDataLoader]:
@@ -32,7 +27,7 @@ def get_data_loader(config: ModelConfig) -> Union[TimelessDataLoader, GrayscaleD
 
 
 def get_train_generator(
-  data: Dict[str, Any], 
+  data: DataSplit, 
   batch_size: int, 
   model: str, 
   shuffle: bool = True, 

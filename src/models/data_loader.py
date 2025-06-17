@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, TypeAlias, TypedDict
 import numpy as np
 from numpy.typing import NDArray
 
@@ -7,6 +7,24 @@ from config.model_config import ModelConfig
 
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
+
+FileMetadata: TypeAlias = Tuple[
+  str,                    # sat_index
+  str,                    # num_bursts  
+  str,                    # burst_index
+  int,                    # elapsed_time
+  NDArray[np.floating],   # sat_position (3D)
+  NDArray[np.floating]    # sat_rotation (4D quaternion)
+]
+
+class DataSplit(TypedDict):
+  image_data: NDArray[np.floating]
+  numerical: NDArray[np.floating]
+  targets: NDArray[np.floating]
+
+class TrainValData(TypedDict):
+  train: DataSplit
+  val: DataSplit
 
 
 class DataLoader:
@@ -39,6 +57,7 @@ class DataLoader:
     """
     # Get all filenames in the folder
     files: List[str] = os.listdir(self.data_path)
+    files.sort() # The order of files is importat for loading the images
     return self._process_data(files)
 
   def _process_data(self, files: List[str]) -> Dict[str, Dict[str, NDArray[np.floating]]]:
@@ -54,7 +73,7 @@ class DataLoader:
     """
     raise NotImplementedError("Subclasses must implement this method")
 
-  def _extract_data_from_filename(self, filename: str) -> Tuple[str, str, str, str, NDArray[np.floating], NDArray[np.floating]]:
+  def _extract_data_from_filename(self, filename: str) -> FileMetadata:
     """
     Extract timestamp, satellite position, and rotation from filename.
 
@@ -78,7 +97,7 @@ class DataLoader:
     i: str = file_name_parts[1]
     j: str = file_name_parts[2]
     k: str = file_name_parts[3]
-    elapsed_time: str = file_name_parts[4]
+    elapsed_time: int = int(file_name_parts[4])
     sat_pos: NDArray[np.floating] = np.array(list(map(float, file_name_parts[5].split(','))))
     sat_rot: NDArray[np.floating] = np.array(list(map(float, file_name_parts[6].replace('.jpg', '').split(','))))
 
@@ -109,15 +128,15 @@ class DataLoader:
 
   def _split_data(
     self,
-    points: NDArray[np.floating],
+    images: NDArray[np.floating],
     numerical_data: NDArray[np.floating],
     targets: NDArray[np.floating]
-  ) -> Dict[str, Dict[str, NDArray[np.floating]]]:
+  ) -> TrainValData:
     """
     Split the data into training and validation sets.
 
     Args:
-      points: Numpy array of data (e.g., matched keypoints or pixels)
+      images: Numpy array of data 
       numerical_data: Numpy array of numerical features (timestamps, satellite positions)
       targets: Numpy array of target values (satellite rotations)
 
@@ -125,10 +144,10 @@ class DataLoader:
       Dictionary containing train and validation splits for all data types
     """
     # Use sklearn's train_test_split to split the data
-    points_train, points_val, \
+    images_train, images_val, \
     num_train, num_val, \
     targets_train, targets_val = train_test_split(
-      points,
+      images,
       numerical_data,
       targets,
       test_size=1 - (self.train_split + self.validation_split),
@@ -138,12 +157,12 @@ class DataLoader:
     # Return dictionary containing all splits
     return {
       'train': {
-        'image_data': points_train,
+        'image_data': images_train,
         'numerical': num_train,
         'targets': targets_train
       },
       'val': {
-        'image_data': points_val,
+        'image_data': images_val,
         'numerical': num_val,
         'targets': targets_val
       }

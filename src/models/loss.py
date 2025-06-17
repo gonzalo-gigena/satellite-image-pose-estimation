@@ -61,3 +61,16 @@ def detailed_distance_loss(y_true, y_pred):
     min_distance = tf.minimum(dist_positive, dist_negative)
     
     return tf.reduce_mean(min_distance)
+
+def geodesic_loss(y_true, y_pred):
+    # Assuming both y_true and y_pred are already normalized to unit quaternions
+    # Compute the dot product for each quaternion pair along the last axis
+    dot = tf.reduce_sum(y_true * y_pred, axis=-1)
+    # Use absolute value to account for double covering (q and -q represent the same rotation)
+    dot = tf.abs(dot)
+    # Clip dot values to avoid numerical issues with acos
+    dot = tf.clip_by_value(dot, -1.0, 1.0)
+    # Compute the angular difference (in radians)
+    angle = 2 * tf.acos(dot)
+    # Return the mean angular difference over the batch
+    return tf.reduce_mean(angle)

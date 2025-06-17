@@ -1,5 +1,5 @@
 import argparse
-from model_config import ModelConfig
+from .model_config import ModelConfig
 
 def parse_args() -> ModelConfig:
   """Parse command line arguments and return ModelConfig object."""
