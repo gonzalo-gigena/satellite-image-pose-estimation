@@ -13,6 +13,8 @@ class ModelConfig:
 
   # Training parameters
   batch_size: int = 32
+  burst: int = 3
+  channels: int = 1
   epochs: int = 100
   lr: float = 0.001
   optimizer: str = 'adam'

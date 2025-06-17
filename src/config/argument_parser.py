@@ -29,6 +29,8 @@ def parse_args() -> ModelConfig:
     validation_split=args.validation_split,
     model=args.model,
     batch_size=args.batch_size,
+    burst=args.burst,
+    channels=args.channels,
     epochs=args.epochs,
     lr=args.lr,
     optimizer=args.optimizer,
@@ -84,6 +86,18 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
     type=int,
     default=32,
     help='Batch size for training'
+  )
+  training_group.add_argument(
+    '--burst',
+    type=int,
+    default=3,
+    help='Number of images per burst'
+  )
+  training_group.add_argument(
+    '--channels',
+    type=int,
+    default=1,
+    help='Number of channels per image'
   )
   
   training_group.add_argument(
@@ -146,11 +160,3 @@ def _add_misc_arguments(parser: argparse.ArgumentParser) -> None:
     default=42,
     help='Random seed for reproducibility'
   )
-
-
-# Usage example:
-if __name__ == '__main__':
-  config = parse_args()
-  print(f"Training with config: {config}")
-  print(f"Data path: {config.data_path}")
-  print(f"Learning rate: {config.lr}")
