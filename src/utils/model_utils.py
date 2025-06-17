@@ -5,11 +5,11 @@ from models.timeless_model import TimelessModel, TimelessDataLoader
 from models.grayscale_model import GrayscaleDataLoader, GrayscaleModel, GrayscaleDataGenerator
 from models.data_loader import DataSplit
 
-def get_model(model: str) -> Union[TimelessModel, GrayscaleModel]:
+def get_model(model: str, channels: int) -> Union[TimelessModel, GrayscaleModel]:
   """Select and return the appropriate model."""
   if model == 'timeless':
     return TimelessModel()
-  return GrayscaleModel()
+  return GrayscaleModel(channels=channels)
 
 
 def get_data_loader(config: ModelConfig) -> Union[TimelessDataLoader, GrayscaleDataLoader]:

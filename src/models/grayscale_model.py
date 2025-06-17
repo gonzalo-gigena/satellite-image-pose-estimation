@@ -81,13 +81,13 @@ class GrayscaleDataLoader(DataLoader):
     return True
 
 class GrayscaleModel(tf.keras.Model):
-  def __init__(self, image_height=102, image_width=102, sequence_length=3):
+  def __init__(self, image_height=102, image_width=102, channels=1):
     super(GrayscaleModel, self).__init__()
 
     # Image processing layers for sequential frames
     self.image_encoder = tf.keras.Sequential([
       tf.keras.layers.TimeDistributed(
-        tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(image_height, image_width, 1))
+        tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(image_height, image_width, channels))
       ),
       tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))),
       tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu')),

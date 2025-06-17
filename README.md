@@ -63,33 +63,34 @@ python src/main.py --data_path <path_to_dataset> [options]
 
 ### Options
 
-| Argument             | Type    | Description                                             | Default      | Choices                          | Required |
-|----------------------|--------|---------------------------------------------------------|-------------|----------------------------------|----------|
-| `--data_path`       | `str`  | Path to the dataset                                    | N/A         | N/A                              | ✅        |
-| **Data** |        |                                                         |             |                                  |          |
-| `--train_split`     | `float` | Ratio of the dataset to be used for training           | `0.8`       | `0` to `1`                      | ❌        |
-| `--validation_split`| `float` | Ratio of the dataset to be used for validation         | `0.0`       | `0` to `1`                      | ❌        |
-| `--model`          | `str`  | Feature matching method                                 | `'grayscale'` | `'grayscale'`, `'light_glue'` | ❌        |
-| `--num_matches`    | `int`  | Fixed number of matches (Required if `--model` is `'light_glue'`) | `100` | N/A                              | ❌        |
-| **Training** |     |                                                         |             |                                  |          |
-| `--batch_size`      | `int`  | Batch size for training                               | `32`        | N/A                              | ❌        |
-| `--epochs`         | `int`  | Number of epochs for training                         | `100`       | N/A                              | ❌        |
-| `--lr`            | `float` | Learning rate for the optimizer                      | `0.001`     | N/A                              | ❌        |
-| `--optimizer`     | `str`  | Optimizer to be used for training                     | `'adam'`    | `'adam'`, `'sgd'`, `'rmsprop'`  | ❌        |
-| `--loss`         | `str`  | Loss function for training                           | `'quaternion'` | `'quaternion'`, `'angular'`, `'detailed'` | ❌  |
-| **Output** |      |                                                         |             |                                  |          |
-| `--model_save_path`| `str`  | Path to save the trained model                         | N/A         | N/A                              | ❌        |
-| `--log_dir`       | `str`  | Directory to store TensorBoard logs                   | `'./logs'`  | N/A                              | ❌        |
-| **Miscellaneous** | |                                                   |             |                                  |          |
-| `--seed`          | `int`  | Random seed for reproducibility                        | `42`        | N/A                              | ❌        |
+| Argument             | Type    | Description                                             | Default      | Choices                                    | Required |
+|----------------------|--------|---------------------------------------------------------|-------------|--------------------------------------------|----------|
+| `--data_path`       | `str`  | Path to the dataset                                    | N/A         | N/A                                        | ✅        |
+| **Data Parameters** |        |                                                         |             |                                            |          |
+| `--train_split`     | `float` | Ratio of training data split                           | `0.8`       | `0` to `1`                                | ❌        |
+| `--validation_split`| `float` | Ratio of validation data split                         | `0.0`       | `0` to `1`                                | ❌        |
+| `--model`          | `str`  | Feature matching method                                 | `'grayscale'` | `'grayscale'`, `'timeless'`             | ❌        |
+| **Training Parameters** |     |                                                         |             |                                            |          |
+| `--batch_size`      | `int`  | Batch size for training                               | `32`        | N/A                                        | ❌        |
+| `--burst`          | `int`  | Number of images per burst                            | `3`         | N/A                                        | ❌        |
+| `--channels`       | `int`  | Number of channels per image                          | `1`         | N/A                                        | ❌        |
+| `--epochs`         | `int`  | Number of training epochs                             | `100`       | N/A                                        | ❌        |
+| `--lr`            | `float` | Learning rate for optimizer                           | `0.001`     | N/A                                        | ❌        |
+| `--optimizer`     | `str`  | Optimizer for training                                | `'adam'`    | `'adam'`, `'sgd'`, `'rmsprop'`            | ❌        |
+| `--loss`         | `str`  | Loss function for training                           | `'quaternion'` | `'quaternion'`, `'angular'`, `'detailed'`, `'geodesic'` | ❌  |
+| **Output Parameters** |      |                                                         |             |                                            |          |
+| `--model_save_path`| `str`  | Path to save the trained model                         | `None`      | N/A                                        | ❌        |
+| `--log_dir`       | `str`  | Directory for tensorboard logs                        | `'./logs'`  | N/A                                        | ❌        |
+| **Miscellaneous Parameters** | |                                             |             |                                            |          |
+| `--seed`          | `int`  | Random seed for reproducibility                        | `42`        | N/A                                        | ❌        |
 
 
 ### Examples
 
-#### Example 1: Basic Usage with LightGlue Matching
+#### Example 1: Basic Usage with Timeless Model
 
 ```bash
-python src/main.py --data_path ../satellite-image-generation/SyntheticImages --model light_glue --num_matches 100
+python src/main.py --data_path ../satellite-image-generation/SyntheticImages --model timeless --burst 5 --channels 3
 ```
 
 #### Example 2: Customized Training Parameters
@@ -98,7 +99,19 @@ python src/main.py --data_path ../satellite-image-generation/SyntheticImages --m
 python src/main.py --data_path /path/to/data \
                  --batch_size 64 \
                  --lr 0.001 \
-                 --epochs 200
+                 --epochs 200 \
+                 --loss geodesic
+```
+
+#### Example 3: Multi-channel Burst Training
+
+```bash
+python src/main.py --data_path /path/to/data \
+                 --model timeless \
+                 --burst 4 \
+                 --channels 3 \
+                 --batch_size 16 \
+                 --optimizer sgd
 ```
 
 ---
@@ -109,6 +122,6 @@ python src/main.py --data_path /path/to/data \
 
 - **Environment Variables**: The script modifies environment variables that are crucial for TensorFlow to find CUDA libraries. If you encounter issues, double-check the paths and adjust `cuda_env_path` accordingly.
 
-- **Feature Matching Dependency**: Currently, only `'light_glue'` is supported. Ensure that the necessary dependencies for LightGlue are installed and accessible.
+- **Burst and Channels**: The `--burst` parameter controls the number of images per burst, while `--channels` controls the number of channels per image. These parameters are important for multi-temporal satellite image analysis.
 
 ---

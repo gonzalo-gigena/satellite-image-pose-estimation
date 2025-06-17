@@ -7,6 +7,7 @@ from tensorflow.keras.losses import Loss
 from utils.model_utils import get_data_loader, get_model, get_train_generator
 from utils.optimizers import get_optimizer
 from utils.loss_functions import get_loss_function
+from models.loss import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
 from utils.callbacks import get_default_callbacks
 
 from config.model_config import ModelConfig
@@ -20,7 +21,7 @@ class ModelTrainer:
   def __init__(self, config: ModelConfig) -> None:
     """Initialize trainer with configuration."""
     self.config: ModelConfig = config
-    self.model: Model = get_model(config.model)
+    self.model: Model = get_model(config.model, config.channels)
     self.data: TrainValData = self._load_data()
     self.optimizer: Optimizer = get_optimizer(config.optimizer, config.lr)
     self.loss_function: Loss = get_loss_function(config.loss)
@@ -69,7 +70,10 @@ class ModelTrainer:
     self.model.compile(
       optimizer=self.optimizer,
       loss=self.loss_function,
-      metrics=['mae']
+      metrics=[
+        'mae',
+        quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
+      ]
     )
     
     # Train model
