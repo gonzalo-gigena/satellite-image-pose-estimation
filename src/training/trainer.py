@@ -1,5 +1,5 @@
+import os
 from typing import Tuple
-import tensorflow as tf
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import History
@@ -62,6 +62,18 @@ class ModelTrainer:
     )
     
     return train_generator, val_generator
+  
+  def _load_if_exists(self) -> None:
+    # Build model with correct input shapes
+    image_input_shape = (None, 102, 102, self.config.channels)  # (batch_size, height, width, channels)
+    numerical_input_shape = (None, 4)  # (batch_size, 4) for numerical data
+    self.model.build([image_input_shape, numerical_input_shape])
+    
+    # Check for existing model checkpoint
+    checkpoint_path = f'{self.config.log_dir}/best_model.keras'
+    if os.path.exists(checkpoint_path):
+      print(f"Loading existing model from {checkpoint_path}")
+      self.model.load_weights(checkpoint_path)
     
   def train(self) -> Tuple[Model, History]:
     """Execute the training pipeline.
@@ -73,7 +85,7 @@ class ModelTrainer:
     train_generator, val_generator = self._create_generators()
     
     custom_metric = get_metrics()
-    custom_callbacks = get_callbacks()
+    custom_callbacks = get_callbacks(self.config.log_dir)
     
     # Compile model
     self.model.compile(

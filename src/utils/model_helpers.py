@@ -12,7 +12,7 @@ from losses.custom import quaternion_loss, angular_distance_loss, detailed_dista
 from training.callbacks import RotationMetricsCallback
 
 
-def get_callbacks() -> List[tf.keras.callbacks.Callback]:
+def get_callbacks(log_dir: str) -> List[tf.keras.callbacks.Callback]:
   """Return default training callbacks.
 
   Returns:
@@ -20,7 +20,10 @@ def get_callbacks() -> List[tf.keras.callbacks.Callback]:
   """
 
   return [
-    RotationMetricsCallback(metrics_to_track=['loss', 'quaternion_loss']),
+    RotationMetricsCallback(
+      metrics_to_track=['loss', 'quaternion_loss'],
+      track_validation=True
+    ),
     tf.keras.callbacks.EarlyStopping(
       monitor='quaternion_loss',
       patience=10,
@@ -32,6 +35,12 @@ def get_callbacks() -> List[tf.keras.callbacks.Callback]:
       factor=0.5,
       patience=5,
       min_lr=1e-6
+    ),
+    tf.keras.callbacks.ModelCheckpoint(
+      filepath=log_dir+'/{epoch}-{quaternion_loss:.4f}.keras',
+      save_best_only=True,
+      mode='min',
+      verbose=1
     )
   ]
 
