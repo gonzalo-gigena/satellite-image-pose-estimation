@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 def quaternion_loss(y_true, y_pred):
     """

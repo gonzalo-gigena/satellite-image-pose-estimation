@@ -2,11 +2,9 @@ import tensorflow as tf
 import numpy as np
 from typing import Dict, List
 from numpy.typing import NDArray
-from sklearn.preprocessing import StandardScaler
 
-from .data_generator import DataGenerator
-from .data_loader import DataLoader, FileMetadata
-
+from data.generator import DataGenerator
+from data.loader import DataLoader, FileMetadata
 
 class GrayscaleDataGenerator(DataGenerator):
   pass
@@ -87,7 +85,9 @@ class GrayscaleModel(tf.keras.Model):
     # Image processing layers for sequential frames
     self.image_encoder = tf.keras.Sequential([
       tf.keras.layers.TimeDistributed(
-        tf.keras.layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(image_height, image_width, channels))
+        tf.keras.layers.Conv2D(
+          32, kernel_size=(3, 3), activation='relu', input_shape=(image_height, image_width, channels)
+        )
       ),
       tf.keras.layers.TimeDistributed(tf.keras.layers.MaxPooling2D(pool_size=(2, 2))),
       tf.keras.layers.TimeDistributed(tf.keras.layers.Conv2D(64, kernel_size=(3, 3), activation='relu')),
