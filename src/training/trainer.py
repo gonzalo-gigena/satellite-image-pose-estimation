@@ -1,12 +1,14 @@
 from typing import Tuple
+import tensorflow as tf
+
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Optimizer
 from tensorflow.keras.losses import Loss
 
 from utils.model_helpers import get_data_loader, get_model, get_train_generator, get_loss_function, get_optimizer
-from losses.custom import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
-from .callbacks import get_default_callbacks
+from .callbacks import get_callbacks
+from .metrics import get_metrics
 
 from config.model_config import ModelConfig
 
@@ -64,13 +66,14 @@ class ModelTrainer:
     # Create data generators
     train_generator, val_generator = self._create_generators()
     
+    custom_metric = get_metrics()
+    custom_callbacks = get_callbacks()
+    
     # Compile model
     self.model.compile(
       optimizer=self.optimizer,
       loss=self.loss_function,
-      metrics=[
-        'mae'
-      ]
+      metrics=custom_metric
     )
 
     # Train model
@@ -78,7 +81,7 @@ class ModelTrainer:
       train_generator,
       validation_data=val_generator,
       epochs=self.config.epochs,
-      callbacks=get_default_callbacks()
+      callbacks=custom_callbacks
     )
     
     return self.model, history

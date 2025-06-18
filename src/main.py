@@ -1,7 +1,6 @@
 from core.environment import setup_environment
 from config.argument_parser import parse_args
 from training.trainer import ModelTrainer
-from evaluation.metrics import analyze_history
 from config.model_config import ModelConfig
 
 def main():
@@ -13,8 +12,6 @@ def main():
   # Initialize and run training
   trainer = ModelTrainer(config)
   model, history = trainer.train()
-
-  #analyze_history(history)
   
   # Save model
   #trainer.save_model()

@@ -3,7 +3,7 @@ import tensorflow as tf
 
 def setup_environment() -> None:
   """Set up environment variables for TensorFlow and CUDA."""
-  os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Show only errors
+  os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 0=all, 1=info, 2=warning, 3=error
   cuda_env_path = os.path.abspath('../micromamba/envs/thesis')
   os.environ['XLA_FLAGS'] = f'--xla_gpu_cuda_data_dir={cuda_env_path}'
   os.environ['LD_LIBRARY_PATH'] = f'{cuda_env_path}/lib:' + os.environ.get('LD_LIBRARY_PATH', '')
