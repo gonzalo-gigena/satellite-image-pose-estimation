@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 from config.model_config import ModelConfig
 
 import tensorflow as tf
@@ -9,7 +9,45 @@ from models.timeless import TimelessModel, TimelessDataLoader
 from models.grayscale import GrayscaleDataLoader, GrayscaleModel, GrayscaleDataGenerator
 from data.loader import DataSplit
 from losses.custom import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
+from training.callbacks import RotationMetricsCallback
 
+
+def get_callbacks() -> List[tf.keras.callbacks.Callback]:
+  """Return default training callbacks.
+
+  Returns:
+    List of Keras callbacks for training monitoring and optimization
+  """
+
+  return [
+    RotationMetricsCallback(metrics_to_track=['loss', 'quaternion_loss']),
+    tf.keras.callbacks.EarlyStopping(
+      monitor='quaternion_loss',
+      patience=10,
+      restore_best_weights=True,
+      mode='min'
+    ),
+    tf.keras.callbacks.ReduceLROnPlateau(
+      monitor='quaternion_loss',
+      factor=0.5,
+      patience=5,
+      min_lr=1e-6
+    )
+  ]
+
+def get_metrics() -> List[tf.keras.metrics.Metric]:
+  """Return default metrics.
+
+  Returns:
+    List of Keras metrics for training monitoring and optimization
+  """
+  return [
+    'mae',
+    quaternion_loss,
+    angular_distance_loss,
+    detailed_distance_loss,
+    geodesic_loss
+  ]
 
 def get_loss_function(loss_name: str) -> Loss:
   """Select and return the loss function based on the given name"""
