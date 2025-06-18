@@ -1,6 +1,6 @@
 from core.environment import setup_environment
 from config.argument_parser import parse_args
-from train.trainer import ModelTrainer
+from training.trainer import ModelTrainer
 from evaluation.metrics import analyze_history
 from config.model_config import ModelConfig
 

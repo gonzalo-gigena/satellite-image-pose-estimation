@@ -5,10 +5,10 @@ import tensorflow as tf
 from tensorflow.keras.losses import Loss
 from tensorflow.keras.optimizers import Optimizer
 
-from models.timeless_model import TimelessModel, TimelessDataLoader
-from models.grayscale_model import GrayscaleDataLoader, GrayscaleModel, GrayscaleDataGenerator
+from models.timeless import TimelessModel, TimelessDataLoader
+from models.grayscale import GrayscaleDataLoader, GrayscaleModel, GrayscaleDataGenerator
 from data.loader import DataSplit
-from models.loss import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
+from losses.custom import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
 
 
 def get_loss_function(loss_name: str) -> Loss:

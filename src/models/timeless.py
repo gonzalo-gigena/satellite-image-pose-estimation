@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 
 #from data_generator import DataGenerator
-from .data_loader import DataLoader
+from data.loader import DataLoader
 
 class TimelessDataLoader(DataLoader):
   def _process_data(self, files):

@@ -4,14 +4,14 @@ from tensorflow.keras.callbacks import History
 from tensorflow.keras.optimizers import Optimizer
 from tensorflow.keras.losses import Loss
 
-from utils.model_utils import get_data_loader, get_model, get_train_generator, get_loss_function, get_optimizer
-from models.loss import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
-from utils.callbacks import get_default_callbacks
+from utils.model_helpers import get_data_loader, get_model, get_train_generator, get_loss_function, get_optimizer
+from losses.custom import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
+from .callbacks import get_default_callbacks
 
 from config.model_config import ModelConfig
 
 from data.loader import TrainValData
-from models.grayscale_model import GrayscaleDataGenerator
+from models.grayscale import GrayscaleDataGenerator
 
 class ModelTrainer:
   """Handles model training and evaluation pipeline."""
