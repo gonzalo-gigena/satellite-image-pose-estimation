@@ -81,6 +81,11 @@ class GrayscaleDataLoader(DataLoader):
 class GrayscaleModel(tf.keras.Model):
   def __init__(self, image_height=102, image_width=102, channels=1):
     super(GrayscaleModel, self).__init__()
+    
+    # Store dimensions for build method
+    self.image_height = image_height
+    self.image_width = image_width
+    self.channels = channels
 
     # Image processing layers for sequential frames
     self.image_encoder = tf.keras.Sequential([
@@ -109,6 +114,32 @@ class GrayscaleModel(tf.keras.Model):
       tf.keras.layers.Dense(128, activation='relu'),
       tf.keras.layers.Dense(4)  # 4 quaternion components
     ])
+
+  def build(self, input_shape):
+    """Build the model with proper input shapes."""
+    
+    # Create dummy inputs to build the model
+    if isinstance(input_shape, list) and len(input_shape) == 2:
+      # Two inputs: image_data and numerical
+      image_shape, numerical_shape = input_shape
+    else:
+      # Single input or other format
+      image_shape = (None, 3, self.image_height, self.image_width, self.channels)
+      numerical_shape = (None, 4)
+    
+    # Build each component
+    # For TimeDistributed layers, we need to build with the full sequential shape
+    self.image_encoder.build(image_shape)
+    self.numerical_encoder.build(numerical_shape)
+    
+    # Calculate the output shape of image_encoder for quaternion_predictor
+    # The image_encoder outputs (batch_size, 384) after flattening
+    # 3 frames * 128 features per frame = 384
+    image_features_shape = (None, 384)  # 3 * 128 = 384 (3 frames * 128 features)
+    numerical_features_shape = (None, 16)
+    combined_shape = (None, 400)  # 384 + 16
+    
+    self.quaternion_predictor.build(combined_shape)
 
   def call(self, inputs):
     # Unpack inputs

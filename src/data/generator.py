@@ -14,7 +14,8 @@ class DataGenerator(tf.keras.utils.Sequence):
     targets: NDArray[np.floating], 
     shuffle: bool = False, 
     batch_size: int = 32, 
-    augment: bool = False
+    augment: bool = False,
+    **kwargs
   ) -> None:
     """
     Initialize the data generator.
@@ -26,7 +27,9 @@ class DataGenerator(tf.keras.utils.Sequence):
       shuffle: Whether to shuffle data between epochs
       batch_size: Size of each batch
       augment: Whether to apply data augmentation
+      **kwargs: Additional arguments for PyDataset compatibility
     """
+    super().__init__(**kwargs)
     self.images = tf.convert_to_tensor(images, dtype=tf.float32)
     self.numerical = tf.convert_to_tensor(numerical, dtype=tf.float32)
     self.targets = tf.convert_to_tensor(targets, dtype=tf.float32)
