@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 from typing import Dict, List
 from numpy.typing import NDArray
+from sklearn.preprocessing import StandardScaler
 
 from data.generator import DataGenerator
 from data.loader import DataLoader, FileMetadata
@@ -54,12 +55,13 @@ class GrayscaleDataLoader(DataLoader):
     positions_array: NDArray[np.floating] = np.array(positions)             # shape: (N, 3)
     targets_array: NDArray[np.floating] = np.array(targets)               # shape: (N, 4)
 
-    #pos_scaler: StandardScaler = StandardScaler()
-    #pos_data_norm: NDArray[np.floating] = pos_scaler.fit_transform(positions_array)
+    # Combine time and positions, then normalize together
     numerical_data: NDArray[np.floating] = np.column_stack([time_array, positions_array])
+    scaler: StandardScaler = StandardScaler()
+    numerical_data_norm: NDArray[np.floating] = scaler.fit_transform(numerical_data)
 
     # (N, 3, 102, 102, 1) (N, 4) (N, 4)
-    return self._split_data(images_array, numerical_data, targets_array)
+    return self._split_data(images_array, numerical_data_norm, targets_array)
     
   def _validate(self, data: List[FileMetadata]) -> bool:
     """
