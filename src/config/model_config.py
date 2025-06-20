@@ -13,7 +13,9 @@ class ModelConfig:
 
   # Training parameters
   batch_size: int = 32
-  burst: int = 3
+  frames: int = 3
+  image_height: int = 102
+  image_width: int = 102
   channels: int = 1
   epochs: int = 100
   lr: float = 0.001
@@ -21,7 +23,6 @@ class ModelConfig:
   loss: str = 'quaternion'
 
   # Output parameters
-  model_save_path: Optional[str] = None
   log_dir: str = './logs'
 
   # Miscellaneous parameters

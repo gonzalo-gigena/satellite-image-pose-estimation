@@ -26,11 +26,11 @@ class GrayscaleDataLoader(DataLoader):
     positions: List[NDArray[np.floating]] = []
     targets: List[NDArray[np.floating]] = []
     
-    for i in range(0, len(files), self.burst):
-      print(f"Processing images [{i+1}-{i+self.burst}]/{len(files)}")
+    for i in range(0, len(files), self.frames):
+      print(f"Processing images [{i+1}-{i+self.frames}]/{len(files)}")
 
       files_data: List[FileMetadata] = []
-      for j in range(self.burst):
+      for j in range(self.frames):
         files_data.append(self._extract_data_from_filename(files[i+j]))
       
       if not self._validate(files_data):
@@ -39,7 +39,7 @@ class GrayscaleDataLoader(DataLoader):
 
       # Load image and get grayscale pixels
       pixels: List[NDArray[np.floating]] = []
-      for j in range(self.burst):
+      for j in range(self.frames):
         pixels.append(self._get_pixels(files[i+j]))
 
       # Append data to lists

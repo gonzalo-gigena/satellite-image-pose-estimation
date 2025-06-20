@@ -29,13 +29,14 @@ def parse_args() -> ModelConfig:
     validation_split=args.validation_split,
     model=args.model,
     batch_size=args.batch_size,
-    burst=args.burst,
+    frames=args.frames,
     channels=args.channels,
+    image_height=args.image_height,
+    image_width=args.image_width,
     epochs=args.epochs,
     lr=args.lr,
     optimizer=args.optimizer,
     loss=args.loss,
-    model_save_path=args.model_save_path,
     log_dir=args.log_dir,
     seed=args.seed
   )
@@ -82,16 +83,30 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
   training_group = parser.add_argument_group('Training Parameters')
   
   training_group.add_argument(
+    '--image_height',
+    type=int,
+    default=102,
+    help='Image height'
+  )
+  
+  training_group.add_argument(
+    '--image_width',
+    type=int,
+    default=102,
+    help='Image width'
+  )
+  
+  training_group.add_argument(
     '--batch_size',
     type=int,
     default=32,
     help='Batch size for training'
   )
   training_group.add_argument(
-    '--burst',
+    '--frames',
     type=int,
     default=3,
-    help='Number of images per burst'
+    help='Number of frames per burst'
   )
   training_group.add_argument(
     '--channels',
@@ -134,13 +149,6 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
 def _add_output_arguments(parser: argparse.ArgumentParser) -> None:
   """Add output-related arguments to parser."""
   output_group = parser.add_argument_group('Output Parameters')
-  
-  output_group.add_argument(
-    '--model_save_path',
-    type=str,
-    default=None,
-    help='Path to save the trained model'
-  )
   
   output_group.add_argument(
     '--log_dir',

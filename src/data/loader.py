@@ -47,7 +47,7 @@ class DataLoader:
     self.validation_split = config.validation_split
     self.seed = config.seed
     self.channels = config.channels
-    self.burst = config.burst
+    self.frames = config.frames
 
   def load_data(self) -> Dict[str, Dict[str, NDArray[np.floating]]]:
     """Load data based on file extension and type.

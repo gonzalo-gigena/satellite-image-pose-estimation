@@ -53,7 +53,7 @@ class ModelTrainer:
     self.use_lr_scheduler = use_lr_scheduler
     
     # Initialize model and data
-    self.model: Model = get_model(config.model, config.channels)
+    self.model: Model = get_model(config.model, config.channels, config.image_height, config.image_width)
     self.data: TrainValData = self._load_data()
     self.optimizer: Optimizer = get_optimizer(config.optimizer, config.lr)
     self.loss_function: Loss = get_loss_function(config.loss)
@@ -87,12 +87,14 @@ class ModelTrainer:
     
     # Enhanced model checkpoint
     callbacks.append(EnhancedModelCheckpoint(
-        log_dir=self.config.log_dir,
-        max_models=self.max_models,
-        monitor=self.monitor_metric,
-        load_best_on_start=True,
-        channels=self.config.channels,
-        burst=self.config.burst
+      log_dir=self.config.log_dir,
+      max_models=self.max_models,
+      monitor=self.monitor_metric,
+      load_best_on_start=True,
+      channels=self.config.channels,
+      frames=self.config.frames,
+      image_height=self.config.image_height,
+      image_width=self.config.image_width
     ))
     
     callbacks.append(RotationMetricsCallback(
@@ -102,20 +104,20 @@ class ModelTrainer:
     
     # Early stopping
     callbacks.append(tf.keras.callbacks.EarlyStopping(
-        monitor=self.monitor_metric,
-        patience=15,
-        restore_best_weights=True,
-        mode=self.monitor_mode,
-        verbose=1
+      monitor=self.monitor_metric,
+      patience=15,
+      restore_best_weights=True,
+      mode=self.monitor_mode,
+      verbose=1
     ))
     
     # Reduce learning rate on plateau
     callbacks.append(tf.keras.callbacks.ReduceLROnPlateau(
-        monitor=self.monitor_metric,
-        factor=0.5,
-        patience=8,
-        min_lr=1e-7,
-        verbose=1
+      monitor=self.monitor_metric,
+      factor=0.5,
+      patience=8,
+      min_lr=1e-7,
+      verbose=1
     ))
     return callbacks
   

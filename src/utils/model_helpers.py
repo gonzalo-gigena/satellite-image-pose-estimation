@@ -54,11 +54,11 @@ def get_optimizer(optimizer_name: str, learning_rate: float) -> Optimizer:
 
   return optimizer_class(learning_rate=learning_rate)
 
-def get_model(model: str, channels: int) -> Union[TimelessModel, GrayscaleModel]:
+def get_model(model: str, channels: int, image_height: int, image_width: int) -> Union[TimelessModel, GrayscaleModel]:
   """Select and return the appropriate model."""
   if model == 'timeless':
     return TimelessModel()
-  return GrayscaleModel(channels=channels)
+  return GrayscaleModel(image_height, image_width, channels)
 
 
 def get_data_loader(config: ModelConfig) -> Union[TimelessDataLoader, GrayscaleDataLoader]:

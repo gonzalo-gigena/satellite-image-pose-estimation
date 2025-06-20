@@ -213,7 +213,9 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       verbose: int = 1,
       load_best_on_start: bool = False,
       channels: int = 1,
-      burst: int = 3,
+      frames: int = 3,
+      image_height: int = 102,
+      image_width: int = 102,
       **kwargs
   ):
     """Initialize the enhanced checkpoint callback.
@@ -230,7 +232,9 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       load_best_on_start: Whether to load best model when training starts
       **kwargs: Additional arguments for ModelCheckpoint
     """
-    self.burst = burst
+    self.frames = frames
+    self.image_height=image_height
+    self.image_width=image_width
     self.channels = channels
     self.log_dir = Path(log_dir)
     self.checkpoints_dir = self.log_dir / 'checkpoints'
@@ -273,7 +277,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     """Build model with correct input shapes."""
     # Build model with correct input shapes before compilation
     # This prevents automatic building with wrong shapes during compile()
-    image_input_shape = (None, self.burst, 102, 102, self.channels)  # (batch_size, 3_frames, height, width, channels)
+    image_input_shape = (None, self.frames, self.image_height, self.image_height, self.channels)  # (batch_size, 3_frames, height, width, channels)
     numerical_input_shape = (None, 4)  # (batch_size, 4_features)
     self.model.build([image_input_shape, numerical_input_shape])
 
