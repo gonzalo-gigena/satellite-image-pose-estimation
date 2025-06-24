@@ -1,11 +1,10 @@
-from typing import Union, List
+from typing import List
 from config.model_config import ModelConfig
 
 import tensorflow as tf
 from tensorflow.keras.losses import Loss
 from tensorflow.keras.optimizers import Optimizer
 
-from models.timeless import TimelessModel, TimelessDataLoader
 from models.grayscale import GrayscaleDataLoader, GrayscaleModel, GrayscaleDataGenerator
 from data.loader import DataSplit
 from losses.custom import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
@@ -54,14 +53,12 @@ def get_optimizer(optimizer_name: str, learning_rate: float) -> Optimizer:
 
   return optimizer_class(learning_rate=learning_rate)
 
-def get_model(model: str, channels: int, image_height: int, image_width: int) -> Union[TimelessModel, GrayscaleModel]:
+def get_model(model: str, channels: int, image_height: int, image_width: int) -> GrayscaleModel:
   """Select and return the appropriate model."""
-  if model == 'timeless':
-    return TimelessModel()
   return GrayscaleModel(image_height, image_width, channels)
 
 
-def get_data_loader(config: ModelConfig) -> Union[TimelessDataLoader, GrayscaleDataLoader]:
+def get_data_loader(config: ModelConfig) -> GrayscaleDataLoader:
   """Select and return the appropriate data loader based on the matching method.
   
   Args:
@@ -70,8 +67,6 @@ def get_data_loader(config: ModelConfig) -> Union[TimelessDataLoader, GrayscaleD
   Returns:
     DataLoader: The appropriate data loader instance
   """
-  if config.model == 'timeless':
-    return TimelessDataLoader(config)
   return GrayscaleDataLoader(config)
 
 

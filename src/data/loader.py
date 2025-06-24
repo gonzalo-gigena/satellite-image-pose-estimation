@@ -56,7 +56,7 @@ class DataLoader:
       Dictionary containing train and validation data splits
     """
     # Get all filenames in the folder
-    files: List[str] = os.listdir(self.data_path)
+    files: List[str] =  [f for f in os.listdir(self.data_path) if f.startswith('cubesat')]
     files.sort() # The order of files is importat for loading the images
     return self._process_data(files)
 
