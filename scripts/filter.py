@@ -73,3 +73,44 @@ def delete_empty_images(folder_path, threshold, delete, frames):
             os.remove(images[j])
         except Exception as e:
           print(f"Error deleting {images[j]}: {str(e)}")
+
+def parse_arguments():
+  """
+  Parse command line arguments
+  
+  Returns:
+    argparse.Namespace: Parsed command line arguments
+  """
+  parser = argparse.ArgumentParser(description='Delete empty (mostly black) images from a folder')
+  
+  parser.add_argument('--path', 
+                    type=str,
+                    required=True,
+                    help='Path to the folder containing images')
+  
+  parser.add_argument('--threshold',
+                    type=float,
+                    default=0.95,
+                    help='Threshold for determining if an image is empty (0.0 to 1.0)')
+  
+  parser.add_argument('--frames',
+                    type=int,
+                    default=3,
+                    help='Number of frames per burst')
+  
+  parser.add_argument('--delete',
+                    action='store_true',
+                    default=True,
+                    help='Delete images below the threshold')
+  
+  args = parser.parse_args()
+  
+  # Validate threshold
+  if not 0 <= args.threshold <= 1:
+    parser.error("Threshold must be between 0.0 and 1.0")
+  
+  return args
+
+if __name__ == "__main__":
+  args = parse_arguments()
+  delete_empty_images(args.path, args.threshold, args.delete, args.frames)
