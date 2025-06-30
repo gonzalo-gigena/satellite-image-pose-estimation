@@ -26,7 +26,7 @@ curl micro.mamba.pm/install.sh | bash
 Create an environment named `thesis` with Python 3.10:
 
 ```bash
-micromamba create -n thesis python=3.9
+micromamba create -n thesis python=3.10
 ```
 
 #### Activating an Environment
@@ -69,10 +69,10 @@ python src/main.py --data_path <path_to_dataset> [options]
 | **Data Parameters** |        |                                                         |             |                                            |          |
 | `--train_split`     | `float` | Ratio of training data split                           | `0.8`       | `0` to `1`                                | ❌        |
 | `--validation_split`| `float` | Ratio of validation data split                         | `0.0`       | `0` to `1`                                | ❌        |
-| `--model`          | `str`  | Feature matching method                                 | `'grayscale'` | `'grayscale'`, `'timeless'`             | ❌        |
+| `--model`          | `str`  | Feature matching method                                 | `'grayscale'` | `'grayscale'`, `'relative_pose'`             | ❌        |
 | **Training Parameters** |     |                                                         |             |                                            |          |
 | `--batch_size`      | `int`  | Batch size for training                               | `32`        | N/A                                        | ❌        |
-| `--burst`          | `int`  | Number of images per burst                            | `3`         | N/A                                        | ❌        |
+| `--frames`          | `int`  | Number of frames per burst                            | `3`         | N/A                                        | ❌        |
 | `--channels`       | `int`  | Number of channels per image                          | `1`         | N/A                                        | ❌        |
 | `--epochs`         | `int`  | Number of training epochs                             | `100`       | N/A                                        | ❌        |
 | `--lr`            | `float` | Learning rate for optimizer                           | `0.001`     | N/A                                        | ❌        |
@@ -87,10 +87,10 @@ python src/main.py --data_path <path_to_dataset> [options]
 
 ### Examples
 
-#### Example 1: Basic Usage with Timeless Model
+#### Example 1: Basic Usage with Relative Pose Model
 
 ```bash
-python src/main.py --data_path ../satellite-image-generation/SyntheticImages --model timeless --burst 5 --channels 3
+python src/main.py --data_path ../satellite-image-generation/SyntheticImages --model relative_pose --frames 5 --channels 3
 ```
 
 #### Example 2: Customized Training Parameters
@@ -102,18 +102,6 @@ python src/main.py --data_path /path/to/data \
                  --epochs 200 \
                  --loss geodesic
 ```
-
-#### Example 3: Multi-channel Burst Training
-
-```bash
-python src/main.py --data_path /path/to/data \
-                 --model timeless \
-                 --burst 4 \
-                 --channels 3 \
-                 --batch_size 16 \
-                 --optimizer sgd
-```
-
 ---
 
 ## Notes
@@ -121,7 +109,4 @@ python src/main.py --data_path /path/to/data \
 - **CUDA and TensorFlow GPU Support**: If you plan to run the script on a GPU, ensure that CUDA and cuDNN are properly installed and that TensorFlow is built with GPU support.
 
 - **Environment Variables**: The script modifies environment variables that are crucial for TensorFlow to find CUDA libraries. If you encounter issues, double-check the paths and adjust `cuda_env_path` accordingly.
-
-- **Burst and Channels**: The `--burst` parameter controls the number of images per burst, while `--channels` controls the number of channels per image. These parameters are important for multi-temporal satellite image analysis.
-
 ---
