@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+import time as ti
+from tqdm import tqdm
 from typing import Dict, List
 from numpy.typing import NDArray
 from sklearn.preprocessing import StandardScaler
@@ -27,27 +29,34 @@ class GrayscaleDataLoader(DataLoader):
     positions: List[NDArray[np.floating]] = []
     targets: List[NDArray[np.floating]] = []
     
-    for i in range(0, len(files), self.frames):
-      print(f"Processing images [{i+1}-{i+self.frames}]/{len(files)}")
+    start_time = ti.time()
+    # Create progress bar for sequences
+    print(f"Processing {len(files)} images ...")
+    num_sequences = len(files) // self.frames
+    with tqdm(total=num_sequences, desc="Processing sequences", unit="seq") as pbar:
+      for i in range(0, len(files), self.frames):
+        files_data: List[FileMetadata] = []
+        for j in range(self.frames):
+          files_data.append(self._extract_data_from_filename(files[i+j]))
+        
+        if not self._validate(files_data):
+          pbar.set_postfix_str("Skipped invalid sequence")
+          pbar.update(1)
+          continue
 
-      files_data: List[FileMetadata] = []
-      for j in range(self.frames):
-        files_data.append(self._extract_data_from_filename(files[i+j]))
-      
-      if not self._validate(files_data):
-        print("Skip sequence")
-        continue
+        # Load image and get grayscale pixels
+        pixels: List[NDArray[np.floating]] = []
+        for j in range(self.frames):
+          pixels.append(self._get_pixels(files[i+j]))
 
-      # Load image and get grayscale pixels
-      pixels: List[NDArray[np.floating]] = []
-      for j in range(self.frames):
-        pixels.append(self._get_pixels(files[i+j]))
-
-      # Append data to lists
-      images.append(pixels)
-      time.append(files_data[-1][-3]) # time elapsed of last image
-      positions.append(files_data[-1][-2]) # sat position of last image
-      targets.append(files_data[-1][-1]) # sat rotation of last image
+        # Append data to lists
+        images.append(pixels)
+        time.append(files_data[-1][-3]) # time elapsed of last image
+        positions.append(files_data[-1][-2]) # sat position of last image
+        targets.append(files_data[-1][-1]) # sat rotation of last image
+        
+        pbar.update(1)
+    
 
     # Convert Python lists to NumPy arrays
     images_array: NDArray[np.floating] = np.array(images)        # shape: (N, B, H, W, C)
@@ -59,6 +68,10 @@ class GrayscaleDataLoader(DataLoader):
     numerical_data: NDArray[np.floating] = np.column_stack([time_array, positions_array])
     scaler: StandardScaler = StandardScaler()
     numerical_data_norm: NDArray[np.floating] = scaler.fit_transform(numerical_data)
+    
+    end_time = ti.time()
+    execution_time = end_time - start_time
+    print(f"Processing time: {execution_time:.4f} seconds")
 
     # (N, 3, 102, 102, 1) (N, 4) (N, 4)
     return self._split_data(images_array, numerical_data_norm, targets_array)
