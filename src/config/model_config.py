@@ -1,14 +1,16 @@
 from dataclasses import dataclass
 
+
 # Immutable
 @dataclass(frozen=True)
 class ModelConfig:
   """Configuration class for ML model training parameters."""
+
   # Data parameters
   data_path: str
   train_split: float = 0.8
   validation_split: float = 0.0
-  model: str = 'grayscale'
+  model: str = "grayscale"
 
   # Training parameters
   batch_size: int = 32
@@ -18,11 +20,11 @@ class ModelConfig:
   channels: int = 1
   epochs: int = 100
   lr: float = 0.001
-  optimizer: str = 'adam'
-  loss: str = 'quaternion'
+  optimizer: str = "adam"
+  loss: str = "quaternion"
 
   # Output parameters
-  log_dir: str = './logs'
+  log_dir: str = "./logs"
 
   # Miscellaneous parameters
   seed: int = 42
@@ -34,16 +36,16 @@ class ModelConfig:
   def _validate(self) -> None:
     """Validate configuration parameters."""
     if not 0 <= self.train_split <= 1:
-      raise ValueError('Train split must be between 0 and 1.')
+      raise ValueError("Train split must be between 0 and 1.")
 
     if not 0 <= self.validation_split <= 1:
-      raise ValueError('Validation split must be between 0 and 1.')
+      raise ValueError("Validation split must be between 0 and 1.")
 
-    if self.model not in ['grayscale', 'relative_pose']:
-      raise ValueError(f'Invalid model: {self.model}')
+    if self.model not in ["grayscale", "relative_pose"]:
+      raise ValueError(f"Invalid model: {self.model}")
 
-    if self.optimizer not in ['adam', 'sgd', 'rmsprop']:
-      raise ValueError(f'Invalid optimizer: {self.optimizer}')
+    if self.optimizer not in ["adam", "sgd", "rmsprop"]:
+      raise ValueError(f"Invalid optimizer: {self.optimizer}")
 
-    if self.loss not in ['quaternion', 'angular', 'detailed', 'geodesic']:
-      raise ValueError(f'Invalid loss function: {self.loss}')
+    if self.loss not in ["quaternion", "angular", "detailed", "geodesic"]:
+      raise ValueError(f"Invalid loss function: {self.loss}")

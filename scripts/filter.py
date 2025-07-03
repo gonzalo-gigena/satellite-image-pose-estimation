@@ -1,7 +1,9 @@
-import os
-from PIL import Image
-import numpy as np
 import argparse
+import os
+
+import numpy as np
+from PIL import Image
+
 
 def is_image_empty(image_path: str, threshold: float = 0.95, darkness_threshold: int = 10) -> bool:
   """
@@ -20,7 +22,7 @@ def is_image_empty(image_path: str, threshold: float = 0.95, darkness_threshold:
     img: Image.Image = Image.open(image_path)
 
     # Convert image to grayscale
-    img_gray: Image.Image = img.convert('L')
+    img_gray: Image.Image = img.convert("L")
 
     # Convert to numpy array
     img_array: np.ndarray = np.array(img_gray)
@@ -37,6 +39,7 @@ def is_image_empty(image_path: str, threshold: float = 0.95, darkness_threshold:
     print(f"Error processing {image_path}: {str(e)}")
     return False
 
+
 def delete_empty_images(folder_path: str, threshold: float, delete: bool, frames: int) -> None:
   """
   Check all images in a folder and delete empty (mostly black) images
@@ -48,14 +51,14 @@ def delete_empty_images(folder_path: str, threshold: float, delete: bool, frames
     frames (int): Number of frames per burst
   """
   # Supported image extensions
-  valid_extensions: tuple[str, ...] = ('.jpg',)
+  valid_extensions: tuple[str, ...] = (".jpg",)
 
   # Check if folder exists
   if not os.path.exists(folder_path):
     print(f"Error: Folder {folder_path} does not exist!")
     return
 
-  files: list[str] = [f for f in os.listdir(folder_path) if f.startswith('cubesat')]
+  files: list[str] = [f for f in os.listdir(folder_path) if f.startswith("cubesat")]
   files.sort()  # The order of files is important
 
   # Iterate through all files in the folder
@@ -76,6 +79,7 @@ def delete_empty_images(folder_path: str, threshold: float, delete: bool, frames
         except Exception as e:
           print(f"Error deleting {images[j]}: {str(e)}")
 
+
 def parse_arguments() -> argparse.Namespace:
   """
   Parse command line arguments
@@ -84,36 +88,18 @@ def parse_arguments() -> argparse.Namespace:
       argparse.Namespace: Parsed command line arguments
   """
   parser: argparse.ArgumentParser = argparse.ArgumentParser(
-    description='Delete empty (mostly black) images from a folder'
+      description="Delete empty (mostly black) images from a folder"
   )
 
-  parser.add_argument(
-    '--path',
-    type=str,
-    required=True,
-    help='Path to the folder containing images'
-  )
+  parser.add_argument("--path", type=str, required=True, help="Path to the folder containing images")
 
   parser.add_argument(
-    '--threshold',
-    type=float,
-    default=0.95,
-    help='Threshold for determining if an image is empty (0.0 to 1.0)'
+      "--threshold", type=float, default=0.95, help="Threshold for determining if an image is empty (0.0 to 1.0)"
   )
 
-  parser.add_argument(
-    '--frames',
-    type=int,
-    default=3,
-    help='Number of frames per burst'
-  )
+  parser.add_argument("--frames", type=int, default=3, help="Number of frames per burst")
 
-  parser.add_argument(
-    '--delete',
-    action='store_true',
-    default=True,
-    help='Delete images below the threshold'
-  )
+  parser.add_argument("--delete", action="store_true", default=True, help="Delete images below the threshold")
 
   args: argparse.Namespace = parser.parse_args()
 
@@ -122,6 +108,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.error("Threshold must be between 0.0 and 1.0")
 
   return args
+
 
 if __name__ == "__main__":
   args = parse_arguments()

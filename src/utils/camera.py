@@ -22,6 +22,7 @@ import numpy as np
   'NoIR version available?': 'Yes'
 """
 
+
 def get_camera_matrix():
   # Physical sensor specifications
   sensor_width_mm = 3.68
@@ -38,12 +39,8 @@ def get_camera_matrix():
 
   # Principal point (center of the 102x102 image)
   cx = capture_width / 2  # 51
-  cy = capture_height / 2 # 51
+  cy = capture_height / 2  # 51
 
   # Create camera matrix for 102x102 capture
-  camera_matrix = np.array([
-      [fx,  0,  cx],
-      [0,  fy,  cy],
-      [0,   0,   1]
-  ])
+  camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
   return camera_matrix

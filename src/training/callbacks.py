@@ -1,10 +1,12 @@
 import os
-import tensorflow as tf
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Dict, List, Optional, Union
+
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
-from typing import List, Dict, Optional, Union
-from dataclasses import dataclass, asdict
+import tensorflow as tf
+
 
 class RotationMetricsCallback(tf.keras.callbacks.Callback):
   """Callback for tracking and visualizing metrics during training.
@@ -22,12 +24,12 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
   """
 
   def __init__(
-    self,
-    metrics_to_track: List[str],
-    plot_path: str = 'model_training_metrics_plot.png',
-    figsize: tuple = (22, 12),
-    track_validation: bool = False,
-    colors: Optional[Dict[str, str]] = None
+      self,
+      metrics_to_track: List[str],
+      plot_path: str = "model_training_metrics_plot.png",
+      figsize: tuple = (22, 12),
+      track_validation: bool = False,
+      colors: Optional[Dict[str, str]] = None,
   ):
     """Initialize the callback.
 
@@ -47,8 +49,16 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
 
     # Default colors for metrics (using a color cycle)
     default_colors = [
-      '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
-      '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+        "#1f77b4",
+        "#ff7f0e",
+        "#2ca02c",
+        "#d62728",
+        "#9467bd",
+        "#8c564b",
+        "#e377c2",
+        "#7f7f7f",
+        "#bcbd22",
+        "#17becf",
     ]
 
     # Create color mapping for metrics
@@ -56,8 +66,8 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
     for i, metric in enumerate(self.metrics_to_track):
       if metric not in self.colors:
         self.colors[metric] = default_colors[i % len(default_colors)]
-      if self.track_validation and f'val_{metric}' not in self.colors:
-        self.colors[f'val_{metric}'] = default_colors[i % len(default_colors)]
+      if self.track_validation and f"val_{metric}" not in self.colors:
+        self.colors[f"val_{metric}"] = default_colors[i % len(default_colors)]
 
     # Initialize metric tracking
     self._initialize_metrics()
@@ -68,14 +78,10 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
     self.metrics: Dict[str, List[float]] = {metric: [] for metric in self.metrics_to_track}
 
     if self.track_validation:
-      self.metrics.update({f'val_{metric}': [] for metric in self.metrics_to_track})
+      self.metrics.update({f"val_{metric}": [] for metric in self.metrics_to_track})
 
   def _plot_metric(
-    self,
-    ax: plt.Axes,
-    metric_name: str,
-    train_values: List[float],
-    val_values: Optional[List[float]] = None
+      self, ax: plt.Axes, metric_name: str, train_values: List[float], val_values: Optional[List[float]] = None
   ) -> None:
     """Plot a single metric with optional validation values.
 
@@ -86,42 +92,46 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
         val_values: Optional list of validation metric values
     """
     epochs = range(len(train_values))
-    ax.plot(epochs, train_values, label=f'Training {metric_name}',
-            color=self.colors[metric_name], linewidth=2)
+    ax.plot(epochs, train_values, label=f"Training {metric_name}", color=self.colors[metric_name], linewidth=2)
 
     if val_values and self.track_validation:
-      ax.plot(epochs, val_values, label=f'Validation {metric_name}',
-              color=self.colors[f'val_{metric_name}'], linewidth=2, linestyle='--')
+      ax.plot(
+          epochs,
+          val_values,
+          label=f"Validation {metric_name}",
+          color=self.colors[f"val_{metric_name}"],
+          linewidth=2,
+          linestyle="--",
+      )
 
     # Add early stopping indicator if applicable
     if self.early_stopping_epoch is not None:
-      ax.axvline(x=self.early_stopping_epoch, color='red', linestyle=':',
-                label='Early Stopping')
+      ax.axvline(x=self.early_stopping_epoch, color="red", linestyle=":", label="Early Stopping")
 
-    ax.set_xlabel('Epoch', size=12)
-    ax.set_ylabel(metric_name.replace('_', ' ').title(), size=12)
-    ax.set_title(metric_name.replace('_', ' ').title(), size=14)
+    ax.set_xlabel("Epoch", size=12)
+    ax.set_ylabel(metric_name.replace("_", " ").title(), size=12)
+    ax.set_title(metric_name.replace("_", " ").title(), size=14)
     ax.legend()
-    ax.grid(True, linestyle='--', alpha=0.3)
+    ax.grid(True, linestyle="--", alpha=0.3)
 
   def _plot_model_performance(self) -> None:
     """Create and save the performance visualization plot."""
-    plt.style.use('default')
-    plt.rcParams['figure.figsize'] = self.figsize
-    plt.rcParams['axes.spines.top'] = False
-    plt.rcParams['axes.spines.right'] = False
+    plt.style.use("default")
+    plt.rcParams["figure.figsize"] = self.figsize
+    plt.rcParams["axes.spines.top"] = False
+    plt.rcParams["axes.spines.right"] = False
 
     n_metrics = len(self.metrics_to_track)
     n_cols = min(3, n_metrics)
     n_rows = (n_metrics + n_cols - 1) // n_cols
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=self.figsize)
-    fig.suptitle('Model Training Performance', size=20, y=1.02)
+    fig.suptitle("Model Training Performance", size=20, y=1.02)
     axes = axes.flatten()
 
     # Plot each metric
     for i, metric_name in enumerate(self.metrics_to_track):
-      val_values = self.metrics.get(f'val_{metric_name}') if self.track_validation else None
+      val_values = self.metrics.get(f"val_{metric_name}") if self.track_validation else None
       self._plot_metric(axes[i], metric_name, self.metrics[metric_name], val_values)
 
     # Remove empty subplots
@@ -130,14 +140,13 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
 
     plt.tight_layout()
     self.plot_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(self.plot_path, bbox_inches='tight', dpi=300)
+    plt.savefig(self.plot_path, bbox_inches="tight", dpi=300)
     plt.close()
-
 
   def _print_metric_statistics(self) -> None:
     """Print statistical analysis of the metrics."""
-    print('\nMetric Statistics:')
-    print('-' * 50)
+    print("\nMetric Statistics:")
+    print("-" * 50)
 
     for metric_name in self.metrics_to_track:
       values = self.metrics[metric_name]
@@ -177,12 +186,14 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
       self.metrics[metric_name].append(value)
 
     # Check for early stopping
-    if logs.get('stop_training', False):
+    if logs.get("stop_training", False):
       self.early_stopping_epoch = epoch
+
 
 @dataclass
 class Checkpoint:
   """Represents a model checkpoint with metadata."""
+
   filepath: str
   epoch: int
   metric_value: float
@@ -193,7 +204,7 @@ class Checkpoint:
     return asdict(self)
 
   @classmethod
-  def from_dict(cls, data: Dict) -> 'Checkpoint':
+  def from_dict(cls, data: Dict) -> "Checkpoint":
     """Create from dictionary."""
     return cls(**data)
 
@@ -202,21 +213,21 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
   """Enhanced model checkpoint that extends ModelCheckpoint with checkpoint management."""
 
   def __init__(
-    self,
-    log_dir: str,
-    max_models: int = 10,
-    monitor: str = 'quaternion_loss',
-    mode: str = 'min',
-    save_best_only: bool = True,
-    save_freq: Union[int, str] = 'epoch',
-    save_weights_only: bool = False,
-    verbose: int = 1,
-    load_best_on_start: bool = False,
-    channels: int = 1,
-    frames: int = 3,
-    image_height: int = 102,
-    image_width: int = 102,
-      **kwargs
+      self,
+      log_dir: str,
+      max_models: int = 10,
+      monitor: str = "quaternion_loss",
+      mode: str = "min",
+      save_best_only: bool = True,
+      save_freq: Union[int, str] = "epoch",
+      save_weights_only: bool = False,
+      verbose: int = 1,
+      load_best_on_start: bool = False,
+      channels: int = 1,
+      frames: int = 3,
+      image_height: int = 102,
+      image_width: int = 102,
+      **kwargs,
   ):
     """Initialize the enhanced checkpoint callback.
 
@@ -233,31 +244,31 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       **kwargs: Additional arguments for ModelCheckpoint
     """
     self.frames = frames
-    self.image_height=image_height
-    self.image_width=image_width
+    self.image_height = image_height
+    self.image_width = image_width
     self.channels = channels
     self.log_dir = Path(log_dir)
-    self.checkpoints_dir = self.log_dir / 'checkpoints'
+    self.checkpoints_dir = self.log_dir / "checkpoints"
     self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
-    self.file_format = '.weights.h5' if save_weights_only else '.keras'
+    self.file_format = ".weights.h5" if save_weights_only else ".keras"
 
     # Create dynamic filepath pattern
-    epoch_part = '{epoch:03d}'
+    epoch_part = "{epoch:03d}"
     metric_name = monitor  # e.g., 'quaternion_loss'
-    metric_value = f'{{{monitor}:.6f}}'  # e.g., '{quaternion_loss:.6f}'
-    filename = f'{epoch_part}_{metric_name}_{metric_value}{self.file_format}'
+    metric_value = f"{{{monitor}:.6f}}"  # e.g., '{quaternion_loss:.6f}'
+    filename = f"{epoch_part}_{metric_name}_{metric_value}{self.file_format}"
     filepath = str(self.checkpoints_dir / filename)
 
     # Initialize parent ModelCheckpoint
     super().__init__(
-      filepath=filepath,
-      monitor=monitor,
-      mode=mode,
-      save_best_only=save_best_only,
-      save_weights_only=save_weights_only,
-      save_freq=save_freq,
-      verbose=verbose,
-      **kwargs
+        filepath=filepath,
+        monitor=monitor,
+        mode=mode,
+        save_best_only=save_best_only,
+        save_weights_only=save_weights_only,
+        save_freq=save_freq,
+        verbose=verbose,
+        **kwargs,
     )
 
     self.mode = mode
@@ -284,8 +295,10 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
         # Load only weights to avoid optimizer state mismatch
         self.model.load_weights(best_checkpoint.filepath, skip_mismatch=True)
         if self.verbose > 0:
-          print(f"\nLoaded best model from epoch {best_checkpoint.epoch} "
-                f"with {self.metric_name}: {best_checkpoint.metric_value:.6f}")
+          print(
+              f"\nLoaded best model from epoch {best_checkpoint.epoch} "
+              f"with {self.metric_name}: {best_checkpoint.metric_value:.6f}"
+          )
           print(f"Continuing training from this checkpoint...\n")
       except Exception as e:
         print(f"Warning: Failed to load best model: {e}")
@@ -298,16 +311,16 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
         if file.endswith(self.file_format):
           try:
             # Parse filename: epoch_metricname_value.weights.h5
-            parts = file.replace(self.file_format, '').split('_')
+            parts = file.replace(self.file_format, "").split("_")
             epoch = int(parts[0])
             metric_value = float(parts[-1])
-            metric_name = '_'.join(parts[1:-1])
+            metric_name = "_".join(parts[1:-1])
 
             checkpoint = Checkpoint(
-              filepath=str(self.checkpoints_dir / file),
-              epoch=epoch,
-              metric_value=metric_value,
-              metric_name=metric_name,
+                filepath=str(self.checkpoints_dir / file),
+                epoch=epoch,
+                metric_value=metric_value,
+                metric_name=metric_name,
             )
             self.checkpoints.append(checkpoint)
           except (ValueError, IndexError):
@@ -322,10 +335,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
 
   def _sort_checkpoints(self) -> None:
     """Sort checkpoints by metric value."""
-    self.checkpoints.sort(
-      key=lambda x: x.metric_value,
-      reverse=(self.mode == 'max')
-    )
+    self.checkpoints.sort(key=lambda x: x.metric_value, reverse=(self.mode == "max"))
 
   def _save_model(self, epoch, batch, logs):
     """Override parent's _save_model to add checkpoint management."""
@@ -336,19 +346,12 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
 
     # Call parent's save method
     super()._save_model(epoch, batch, logs)
-    
+
     # Add checkpoint to our list
-    checkpoint_path = self.filepath.format(
-      epoch=epoch + 1,
-      monitor=self.monitor,
-      **logs
-    )
+    checkpoint_path = self.filepath.format(epoch=epoch + 1, monitor=self.monitor, **logs)
 
     checkpoint = Checkpoint(
-      filepath=checkpoint_path,
-      epoch=epoch + 1,
-      metric_value=current,
-      metric_name=self.metric_name
+        filepath=checkpoint_path, epoch=epoch + 1, metric_value=current, metric_name=self.metric_name
     )
     self.checkpoints.append(checkpoint)
 
@@ -372,7 +375,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
           print(f"Failed to remove {cp.filepath}: {e}")
 
       # Keep only the best models
-      self.checkpoints = self.checkpoints[:self.max_models]
+      self.checkpoints = self.checkpoints[: self.max_models]
 
   def get_best_model_path(self) -> Optional[str]:
     """Get the filepath of the best model."""
@@ -397,8 +400,10 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       self.model.load_weights(best_checkpoint.filepath, by_name=True, skip_mismatch=True)
       if self.verbose > 0:
         best_checkpoint = self.checkpoints[0]
-        print(f"\nLoaded best model from epoch {best_checkpoint.epoch} "
-              f"with {self.metric_name}: {best_checkpoint.metric_value:.6f}")
+        print(
+            f"\nLoaded best model from epoch {best_checkpoint.epoch} "
+            f"with {self.metric_name}: {best_checkpoint.metric_value:.6f}"
+        )
       return True
     except Exception as e:
       print(f"Failed to load model: {e}")
