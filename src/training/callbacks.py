@@ -182,40 +182,40 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
 
 @dataclass
 class Checkpoint:
-    """Represents a model checkpoint with metadata."""
-    filepath: str
-    epoch: int
-    metric_value: float
-    metric_name: str
+  """Represents a model checkpoint with metadata."""
+  filepath: str
+  epoch: int
+  metric_value: float
+  metric_name: str
 
-    def to_dict(self) -> Dict:
-        """Convert to dictionary for JSON serialization."""
-        return asdict(self)
+  def to_dict(self) -> Dict:
+    """Convert to dictionary for JSON serialization."""
+    return asdict(self)
 
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Checkpoint':
-        """Create from dictionary."""
-        return cls(**data)
+  @classmethod
+  def from_dict(cls, data: Dict) -> 'Checkpoint':
+    """Create from dictionary."""
+    return cls(**data)
 
 
 class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
   """Enhanced model checkpoint that extends ModelCheckpoint with checkpoint management."""
 
   def __init__(
-      self,
-      log_dir: str,
-      max_models: int = 10,
-      monitor: str = 'quaternion_loss',
-      mode: str = 'min',
-      save_best_only: bool = True,
-      save_freq: Union[int, str] = 'epoch',
-      save_weights_only: bool = False,
-      verbose: int = 1,
-      load_best_on_start: bool = False,
-      channels: int = 1,
-      frames: int = 3,
-      image_height: int = 102,
-      image_width: int = 102,
+    self,
+    log_dir: str,
+    max_models: int = 10,
+    monitor: str = 'quaternion_loss',
+    mode: str = 'min',
+    save_best_only: bool = True,
+    save_freq: Union[int, str] = 'epoch',
+    save_weights_only: bool = False,
+    verbose: int = 1,
+    load_best_on_start: bool = False,
+    channels: int = 1,
+    frames: int = 3,
+    image_height: int = 102,
+    image_width: int = 102,
       **kwargs
   ):
     """Initialize the enhanced checkpoint callback.
@@ -273,14 +273,6 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       if self.verbose > 0:
         print(f"Found existing best model with {self.metric_name}: {self.best:.6f}")
 
-  def _build_model(self) -> None:
-    """Build model with correct input shapes."""
-    # Build model with correct input shapes before compilation
-    # This prevents automatic building with wrong shapes during compile()
-    image_input_shape = (None, self.frames, self.image_height, self.image_height, self.channels)  # (batch_size, 3_frames, height, width, channels)
-    numerical_input_shape = (None, 4)  # (batch_size, 4_features)
-    self.model.build([image_input_shape, numerical_input_shape])
-
   def on_train_begin(self, logs=None):
     """Called at the beginning of training."""
     super().on_train_begin(logs)
@@ -288,7 +280,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     if self.load_best_on_start and self.checkpoints:
       best_checkpoint = self.checkpoints[0]
       try:
-        self._build_model()
+        self.model.build({})
         # Load only weights to avoid optimizer state mismatch
         self.model.load_weights(best_checkpoint.filepath, skip_mismatch=True)
         if self.verbose > 0:
@@ -304,29 +296,29 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     if self.checkpoints_dir.exists():
       for file in os.listdir(self.checkpoints_dir):
         if file.endswith(self.file_format):
-            try:
-              # Parse filename: epoch_metricname_value.weights.h5
-              parts = file.replace(self.file_format, '').split('_')
-              epoch = int(parts[0])
-              metric_value = float(parts[-1])
-              metric_name = '_'.join(parts[1:-1])
+          try:
+            # Parse filename: epoch_metricname_value.weights.h5
+            parts = file.replace(self.file_format, '').split('_')
+            epoch = int(parts[0])
+            metric_value = float(parts[-1])
+            metric_name = '_'.join(parts[1:-1])
 
-              checkpoint = Checkpoint(
-                filepath=str(self.checkpoints_dir / file),
-                epoch=epoch,
-                metric_value=metric_value,
-                metric_name=metric_name,
-              )
-              self.checkpoints.append(checkpoint)
-            except (ValueError, IndexError):
-              # Skip files that don't match expected pattern
-              continue
+            checkpoint = Checkpoint(
+              filepath=str(self.checkpoints_dir / file),
+              epoch=epoch,
+              metric_value=metric_value,
+              metric_name=metric_name,
+            )
+            self.checkpoints.append(checkpoint)
+          except (ValueError, IndexError):
+            # Skip files that don't match expected pattern
+            continue
 
       # Sort by metric value
       self._sort_checkpoints()
 
       if self.verbose > 0 and self.checkpoints:
-        print(f"Found {len(self.checkpoints)} existing checkpoint(s)")
+        print(f"\nFound {len(self.checkpoints)} existing checkpoint(s)")
 
   def _sort_checkpoints(self) -> None:
     """Sort checkpoints by metric value."""
@@ -342,6 +334,9 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     if current is None:
       return
 
+    # Call parent's save method
+    super()._save_model(epoch, batch, logs)
+    
     # Add checkpoint to our list
     checkpoint_path = self.filepath.format(
       epoch=epoch + 1,
@@ -357,31 +352,27 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     )
     self.checkpoints.append(checkpoint)
 
-    # Manage checkpoint count
-    self._cleanup_old_checkpoints()
-
     self._sort_checkpoints()
 
-    # Call parent's save method
-    if checkpoint in self.checkpoints:
-      super()._save_model(epoch, batch, logs)
+    # Manage checkpoint count
+    self._cleanup_old_checkpoints()
 
   def _cleanup_old_checkpoints(self) -> None:
     """Remove old checkpoints to maintain max_models limit."""
     if len(self.checkpoints) > self.max_models:
-        # Remove worst models
-        models_to_remove = self.checkpoints[self.max_models:]
-        for cp in models_to_remove:
-          try:
-            if os.path.exists(cp.filepath):
-                os.remove(cp.filepath)
-                if self.verbose > 0:
-                  print(f"Removed old checkpoint: {cp.filepath}")
-          except OSError as e:
-            print(f"Failed to remove {cp.filepath}: {e}")
+      # Remove worst models
+      models_to_remove = self.checkpoints[self.max_models:]
+      for cp in models_to_remove:
+        try:
+          if os.path.exists(cp.filepath):
+            os.remove(cp.filepath)
+            if self.verbose > 0:
+              print(f"\nRemoved old checkpoint: {cp.filepath}")
+        except OSError as e:
+          print(f"Failed to remove {cp.filepath}: {e}")
 
-        # Keep only the best models
-        self.checkpoints = self.checkpoints[:self.max_models]
+      # Keep only the best models
+      self.checkpoints = self.checkpoints[:self.max_models]
 
   def get_best_model_path(self) -> Optional[str]:
     """Get the filepath of the best model."""
@@ -393,10 +384,10 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     """Load the best model weights into the given model.
 
     Args:
-        model: The model to load weights into
+      model: The model to load weights into
 
     Returns:
-        True if model was loaded successfully, False otherwise
+      True if model was loaded successfully, False otherwise
     """
     best_path = self.get_best_model_path()
     if best_path is None:
@@ -406,7 +397,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       self.model.load_weights(best_checkpoint.filepath, by_name=True, skip_mismatch=True)
       if self.verbose > 0:
         best_checkpoint = self.checkpoints[0]
-        print(f"Loaded best model from epoch {best_checkpoint.epoch} "
+        print(f"\nLoaded best model from epoch {best_checkpoint.epoch} "
               f"with {self.metric_name}: {best_checkpoint.metric_value:.6f}")
       return True
     except Exception as e:
