@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 # Immutable
 @dataclass(frozen=True)
@@ -40,7 +39,7 @@ class ModelConfig:
     if not 0 <= self.validation_split <= 1:
       raise ValueError('Validation split must be between 0 and 1.')
 
-    if self.model not in ['grayscale', 'timeless']:
+    if self.model not in ['grayscale', 'relative_pose']:
       raise ValueError(f'Invalid model: {self.model}')
 
     if self.optimizer not in ['adam', 'sgd', 'rmsprop']:

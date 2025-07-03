@@ -8,6 +8,7 @@ from tensorflow.keras.optimizers import Optimizer
 from data.loader import DataLoader
 from data.generator import DataGenerator
 from models.grayscale import GrayscaleModel
+from models.relative_pose import RelativePoseModel
 from data.loader import DataSplit
 from losses.custom import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
 
@@ -55,9 +56,11 @@ def get_optimizer(optimizer_name: str, learning_rate: float) -> Optimizer:
 
   return optimizer_class(learning_rate=learning_rate)
 
-def get_model(model: str, channels: int, image_height: int, image_width: int) -> GrayscaleModel:
+def get_model(model: str, channels: int, frames: int, image_height: int, image_width: int) -> GrayscaleModel:
   """Select and return the appropriate model."""
-  return GrayscaleModel(image_height, image_width, channels)
+  if model == 'relative_pose':
+    return RelativePoseModel(image_height, image_height, channels, frames)
+  return GrayscaleModel(image_height, image_width, channels, frames)
 
 
 def get_data_loader(config: ModelConfig) -> DataLoader:

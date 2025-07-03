@@ -73,7 +73,7 @@ def _add_data_arguments(parser: argparse.ArgumentParser) -> None:
     '--model',
     type=str,
     default='grayscale',
-    choices=['grayscale', 'timeless'],
+    choices=['grayscale', 'relative_pose'],
     help='Feature matching method'
   )
 

@@ -1,9 +1,10 @@
 import tensorflow as tf
 from tensorflow.keras import layers
+from models.layers import SpatialPyramidPooling
 
 # implementation of https://arxiv.org/pdf/1702.01381
 class RelativePoseModel(tf.keras.Model):
-  def __init__(self, image_height=102, image_width=102, channels=1, branch_type='cnnAspp'):
+  def __init__(self, image_height=102, image_width=102, channels=1, frames=3, branch_type='cnnAspp'):
     super(RelativePoseModel, self).__init__()
     
     # Store dimensions
@@ -11,6 +12,7 @@ class RelativePoseModel(tf.keras.Model):
     self.image_width = image_width
     self.channels = channels
     self.branch_type = branch_type
+    self.frames = frames
     
     # Determine configuration based on branch type
     self.use_final_pool = branch_type in ['cnnA', 'cnnAspp']
@@ -41,28 +43,35 @@ class RelativePoseModel(tf.keras.Model):
     """Create a single CNN branch with configurable ending based on branch type."""
     layers_list = [
       # convB1[96,11,4,0]
-      layers.Conv2D(96, kernel_size=11, strides=4, padding='valid', 
-                    activation='relu', name='convB1'),
+      layers.Conv2D(
+        96, kernel_size=11, strides=4, padding='valid', activation='relu', name='convB1'
+      ),
+      
       # pool[3,2]
       layers.MaxPooling2D(pool_size=3, strides=2, name='pool1'),
       
       # convB2[256,5,1,2]
-      layers.Conv2D(256, kernel_size=5, strides=1, padding='same', 
-                    activation='relu', name='convB2'),
+      layers.Conv2D(
+        256, kernel_size=5, strides=1, padding='same', activation='relu', name='convB2'
+      ),
+      
       # pool[3,2]
       layers.MaxPooling2D(pool_size=3, strides=2, name='pool2'),
       
       # convB3[384,3,1,1]
-      layers.Conv2D(384, kernel_size=3, strides=1, padding='same', 
-                    activation='relu', name='convB3'),
+      layers.Conv2D(
+        384, kernel_size=3, strides=1, padding='same', activation='relu', name='convB3'
+      ),
       
       # convB4[384,3,1,1]
-      layers.Conv2D(384, kernel_size=3, strides=1, padding='same', 
-                    activation='relu', name='convB4'),
+      layers.Conv2D(
+        384, kernel_size=3, strides=1, padding='same', activation='relu', name='convB4'
+      ),
       
       # convB5[256,3,1,1]
-      layers.Conv2D(256, kernel_size=3, strides=1, padding='same', 
-                    activation='relu', name='convB5'),
+      layers.Conv2D(
+        256, kernel_size=3, strides=1, padding='same', activation='relu', name='convB5'
+      ),
     ]
     
     # Add final pooling layer if needed (for cnnA and cnnAspp)
@@ -74,7 +83,7 @@ class RelativePoseModel(tf.keras.Model):
     # Add SPP layer if needed
     if self.use_spp:
       layers_list.append(
-        layers.SpatialPyramidPooling2D(self.spp_levels, name='spp')
+        SpatialPyramidPooling(self.spp_levels, name='spp')
       )
     else:
       # Flatten for fixed-size branches
@@ -83,82 +92,24 @@ class RelativePoseModel(tf.keras.Model):
     branch = tf.keras.Sequential(layers_list, name=f'shared_cnn_{self.branch_type}')
     
     return branch
-
-  """
-  def build(self, input_shape):
-    #Build the model with proper input shapes
-    # For dictionary input with 'image_data' and 'numerical' keys
-    if isinstance(input_shape, dict):
-      image_shape = input_shape.get('image_data', (None, 3, self.image_height, self.image_width, self.channels))
-      numerical_shape = input_shape.get('numerical', (None, 4))
-      
-      # Extract dimensions from image_shape
-      batch_size = image_shape[0]
-      num_images = image_shape[1]  # Should be 3
-      height = image_shape[2] if image_shape[2] is not None else self.image_height
-      width = image_shape[3] if image_shape[3] is not None else self.image_width
-      channels = image_shape[4]
-      
-      # Build shared CNN with single image shape
-      single_image_shape = (batch_size, height, width, channels)
-    else:
-      # Default shapes
-      single_image_shape = (None, self.image_height, self.image_width, self.channels)
-      numerical_shape = (None, 4)
-    
-    # Build the shared CNN branch
-    self.shared_cnn.build(single_image_shape)
-    
-    # Build numerical encoder
-    self.numerical_encoder.build(numerical_shape)
-    
-    # Calculate output size based on branch type
-    if self.use_spp:
-      # SPP output: sum of squares of pyramid levels * number of channels
-      num_channels = 256  # from convB5
-      spp_output_size = sum([level * level for level in self.spp_levels]) * num_channels
-      image_features_size = spp_output_size * 3
-    else:
-      # For fixed-size branches, calculate the flattened size
-      # This depends on the input size and the network architecture
-      # For 227x227 input with cnnA: output is 6x6x256 = 9216
-      # For 227x227 input with cnnB: output is 13x13x256 = 43264
-      if self.use_final_pool:  # cnnA
-        # After all pooling layers: 227 -> 54 -> 26 -> 13 -> 6
-        feature_map_size = 6 * 6 * 256
-      else:  # cnnB
-        # Without final pool: 227 -> 54 -> 26 -> 13
-        feature_map_size = 13 * 13 * 256
-      image_features_size = feature_map_size * 3
-    
-    # Build regression layers
-    # 3 branches concatenated + numerical features
-    numerical_features_size = 16  # Output of numerical_encoder
-    concatenated_size = image_features_size + numerical_features_size
-    
-    self.fc1.build((None, concatenated_size))
-    self.fc2.build((None, 64))"""
   
   def call(self, inputs):
     # Handle dictionary input
     if isinstance(inputs, dict):
-      images = inputs['image_data']     # Shape: (batch_size, 3, H, W, C)
+      images = inputs['image_data']     # Shape: (batch_size, F, H, W, C)
       numerical = inputs['numerical']   # Shape: (batch_size, 4)
     else:
       raise ValueError("Input must be a dictionary with 'image_data' and 'numerical' keys")
     
-    # Split the 3 images
-    image1 = images[:, 0, :, :, :]  # Shape: (batch_size, H, W, C)
-    image2 = images[:, 1, :, :, :]
-    image3 = images[:, 2, :, :, :]
+    # Split the images and extract features
+    features = []
+    for i in range(self.frames):
+      image = images[:, i, :, :, :]  # Shape: (batch_size, H, W, C)
+      feature = self.shared_cnn(image)
+      features.append(feature)
     
-    # Process each image through the shared CNN branch
-    features1 = self.shared_cnn(image1)
-    features2 = self.shared_cnn(image2)
-    features3 = self.shared_cnn(image3)
-    
-    # Concatenate features from all three branches
-    image_features = layers.Concatenate(axis=-1)([features1, features2, features3])
+    # Concatenate features from all branches
+    image_features = layers.Concatenate(axis=-1)(features)
     
     # Process numerical input
     numerical_features = self.numerical_encoder(numerical)
@@ -174,3 +125,52 @@ class RelativePoseModel(tf.keras.Model):
     quaternion_normalized = tf.nn.l2_normalize(quaternion_output, axis=-1)
     
     return quaternion_normalized
+
+  def build(self, input_shape):
+    """Build the model with proper input shapes"""
+    # Handle dictionary input shape
+    if isinstance(input_shape, dict):
+      image_shape = input_shape.get('image_data', (None, self.frames, self.image_height, self.image_width, self.channels))
+      numerical_shape = input_shape.get('numerical', (None, 4))
+    else:
+      # Default shapes if not dictionary
+      image_shape = (None, self.frames, self.image_height, self.image_width, self.channels)
+      numerical_shape = (None, 4)
+    
+    # Extract single image shape for building shared CNN
+    single_image_shape = (image_shape[0], self.image_height, self.image_width, self.channels)
+    
+    # Build the shared CNN branch
+    self.shared_cnn.build(single_image_shape)
+    
+    # Build numerical encoder
+    self.numerical_encoder.build(numerical_shape)
+    
+    # Calculate the output size from shared CNN
+    cnn_feature_size = self._calculate_cnn_output_size(single_image_shape)
+    
+    # Total image features from N branches (image1, image2, ..., N)
+    image_features_size = cnn_feature_size * self.frames
+    
+    # Numerical features size (output of numerical_encoder)
+    numerical_features_size = 16  # Last Dense layer in numerical_encoder
+    
+    # Total concatenated size
+    concatenated_size = image_features_size + numerical_features_size
+    
+    # Build regression layers
+    self.fc1.build((None, concatenated_size))
+    self.fc2.build((None, 64))  # FC1 output size
+    
+    # Call parent build
+    super(RelativePoseModel, self).build(input_shape)
+
+  def _calculate_cnn_output_size(self, input_shape):
+    """Calculate the output size from the shared CNN branch"""
+    # Create a dummy input to trace through the network
+    # (None, H, W, C) -> (1, H, W, C)
+    concrete_shape = list(input_shape)
+    concrete_shape[0] = 1  # Use batch size of 1 for calculation
+    dummy_input = tf.zeros(concrete_shape)
+    cnn_output = self.shared_cnn(dummy_input)
+    return int(cnn_output.shape[-1])

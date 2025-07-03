@@ -53,7 +53,13 @@ class ModelTrainer:
     self.use_lr_scheduler = use_lr_scheduler
     
     # Initialize model and data
-    self.model: Model = get_model(config.model, config.channels, config.image_height, config.image_width)
+    self.model: Model = get_model(
+      config.model,
+      config.channels,
+      config.frames,
+      config.image_height,
+      config.image_width
+    )
     self.data: TrainValData = self._load_data()
     self.optimizer: Optimizer = get_optimizer(config.optimizer, config.lr)
     self.loss_function: Loss = get_loss_function(config.loss)
