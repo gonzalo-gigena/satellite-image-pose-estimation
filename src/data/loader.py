@@ -2,10 +2,13 @@ import os
 from typing import List, Dict, Tuple, TypeAlias, TypedDict
 import numpy as np
 from numpy.typing import NDArray
+import time as ti
+from tqdm import tqdm
 
 from config.model_config import ModelConfig
 
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 
 FileMetadata: TypeAlias = Tuple[
@@ -27,7 +30,7 @@ class TrainValData(TypedDict):
   val: DataSplit
 
 
-class DataLoader:
+class BaseDataLoader:
   """Base class for loading and processing data."""
 
   def __init__(self, config: ModelConfig) -> None:
@@ -167,3 +170,84 @@ class DataLoader:
         'targets': targets_val
       }
     }
+
+
+class DataLoader(BaseDataLoader):
+  def _process_data(self, files: List[str]) -> Dict[str, Dict[str, NDArray[np.floating]]]:
+    """
+    Process data by converting images to grayscale and extracting pixels
+
+    Args:
+      files: List of filenames in the data directory
+
+    Returns:
+      Processed and split data for training
+    """
+    images: List[List[NDArray[np.floating]]] = []
+    time: List[str] = []
+    positions: List[NDArray[np.floating]] = []
+    targets: List[NDArray[np.floating]] = []
+    
+    start_time = ti.time()
+    files = files[:self.frames*1000]
+    # Create progress bar for sequences
+    print(f"Processing {len(files)} images ...")
+    num_sequences = len(files) // self.frames
+    with tqdm(total=num_sequences, desc="Processing sequences", unit="seq") as pbar:
+      for i in range(0, len(files), self.frames):
+        files_data: List[FileMetadata] = []
+        for j in range(self.frames):
+          files_data.append(self._extract_data_from_filename(files[i+j]))
+        
+        if not self._validate(files_data):
+          pbar.set_postfix_str("Skipped invalid sequence")
+          pbar.update(1)
+          continue
+
+        # Load image and get grayscale pixels
+        pixels: List[NDArray[np.floating]] = []
+        for j in range(self.frames):
+          pixels.append(self._get_pixels(files[i+j]))
+
+        # Append data to lists
+        images.append(pixels)
+        time.append(files_data[-1][-3]) # time elapsed of last image
+        positions.append(files_data[-1][-2]) # sat position of last image
+        targets.append(files_data[-1][-1]) # sat rotation of last image
+        
+        pbar.update(1)
+
+    # Convert Python lists to NumPy arrays
+    images_array: NDArray[np.floating] = np.array(images)        # shape: (N, B, H, W, C)
+    time_array: NDArray[np.floating] = np.array(time, dtype=np.float32)  # shape: (N,)
+    positions_array: NDArray[np.floating] = np.array(positions)             # shape: (N, 3)
+    targets_array: NDArray[np.floating] = np.array(targets)               # shape: (N, 4)
+
+    # Combine time and positions, then normalize together
+    numerical_data: NDArray[np.floating] = np.column_stack([time_array, positions_array])
+    scaler: StandardScaler = StandardScaler()
+    numerical_data_norm: NDArray[np.floating] = scaler.fit_transform(numerical_data)
+    
+    end_time = ti.time()
+    execution_time = end_time - start_time
+    print(f"Processing time: {execution_time:.4f} seconds")
+
+    # (N, 3, 102, 102, 1) (N, 4) (N, 4)
+    return self._split_data(images_array, numerical_data_norm, targets_array)
+    
+  def _validate(self, data: List[FileMetadata]) -> bool:
+    """
+    Validate that all files in a sequence belong to the same position and burst.
+    
+    Args:
+      data: List of extracted file data tuples
+      
+    Returns:
+      True if validation passes, False otherwise
+    """
+    for i in range(len(data)-1):
+      if data[i][0] != data[i+1][0]: 
+        return False  # Make sure images are in the same position
+      if data[i][1] != data[i+1][1]: 
+        return False  # Make sure images are in the same burst
+    return True

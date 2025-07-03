@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-class DataGenerator(tf.keras.utils.Sequence):
+class BaseDataGenerator(tf.keras.utils.Sequence):
   """Data generator for training with image and numerical data."""
   
   def __init__(
@@ -87,3 +87,6 @@ class DataGenerator(tf.keras.utils.Sequence):
       'image_data': batch_images,
       'numerical': batch_numerical
     }, batch_targets
+
+class DataGenerator(BaseDataGenerator):
+  pass

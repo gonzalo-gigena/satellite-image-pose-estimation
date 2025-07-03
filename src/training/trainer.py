@@ -16,7 +16,7 @@ from utils.model_helpers import (
 
 from config.model_config import ModelConfig
 from data.loader import TrainValData
-from models.grayscale import GrayscaleDataGenerator
+from data.generator import DataGenerator
 
 from .callbacks import (
   EnhancedModelCheckpoint,
@@ -63,7 +63,7 @@ class ModelTrainer:
     data_loader = get_data_loader(self.config)
     return data_loader.load_data()
   
-  def _create_generators(self) -> Tuple[GrayscaleDataGenerator, GrayscaleDataGenerator]:
+  def _create_generators(self) -> Tuple[DataGenerator, DataGenerator]:
     """Create training and validation data generators."""
     train_generator = get_train_generator(
         self.data['train'],

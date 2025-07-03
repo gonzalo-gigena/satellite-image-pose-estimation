@@ -5,7 +5,9 @@ import tensorflow as tf
 from tensorflow.keras.losses import Loss
 from tensorflow.keras.optimizers import Optimizer
 
-from models.grayscale import GrayscaleDataLoader, GrayscaleModel, GrayscaleDataGenerator
+from data.loader import DataLoader
+from data.generator import DataGenerator
+from models.grayscale import GrayscaleModel
 from data.loader import DataSplit
 from losses.custom import quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss
 
@@ -58,7 +60,7 @@ def get_model(model: str, channels: int, image_height: int, image_width: int) ->
   return GrayscaleModel(image_height, image_width, channels)
 
 
-def get_data_loader(config: ModelConfig) -> GrayscaleDataLoader:
+def get_data_loader(config: ModelConfig) -> DataLoader:
   """Select and return the appropriate data loader based on the matching method.
   
   Args:
@@ -67,7 +69,7 @@ def get_data_loader(config: ModelConfig) -> GrayscaleDataLoader:
   Returns:
     DataLoader: The appropriate data loader instance
   """
-  return GrayscaleDataLoader(config)
+  return DataLoader(config)
 
 
 def get_train_generator(
@@ -76,7 +78,7 @@ def get_train_generator(
   model: str, 
   shuffle: bool = True, 
   augment: bool = False
-) -> GrayscaleDataGenerator:
+) -> DataGenerator:
   """Create and return the appropriate data generator based on the matching method.
   
   Args:
@@ -89,7 +91,7 @@ def get_train_generator(
   Returns:
     GrayscaleDataGenerator: The data generator instance
   """
-  return GrayscaleDataGenerator(
+  return DataGenerator(
     images=data['image_data'],
     numerical=data['numerical'],
     targets=data['targets'],
