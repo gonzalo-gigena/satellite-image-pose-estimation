@@ -23,8 +23,8 @@ class ModelTrainer:
       self,
       config: ModelConfig,
       max_models: int = 10,
-      monitor_metric: str = "quaternion_loss",
-      monitor_mode: str = "min",
+      monitor_metric: str = 'quaternion_loss',
+      monitor_mode: str = 'min',
       resume_training: bool = True,
       use_lr_scheduler: bool = True,
   ) -> None:
@@ -46,9 +46,7 @@ class ModelTrainer:
     self.use_lr_scheduler = use_lr_scheduler
 
     # Initialize model and data
-    self.model: Model = get_model(
-        config.model, config.channels, config.frames, config.image_height, config.image_width
-    )
+    self.model: Model = get_model(config)
     self.data: TrainValData = self._load_data()
     self.optimizer: Optimizer = get_optimizer(config.optimizer, config.lr)
     self.loss_function: Loss = get_loss_function(config.loss)
@@ -61,13 +59,13 @@ class ModelTrainer:
   def _create_generators(self) -> Tuple[DataGenerator, DataGenerator]:
     """Create training and validation data generators."""
     train_generator = get_train_generator(
-        self.data["train"],
+        self.data['train'],
         self.config.batch_size,
         self.config.model,
         shuffle=True,
     )
 
-    val_generator = get_train_generator(self.data["val"], self.config.batch_size, self.config.model, shuffle=False)
+    val_generator = get_train_generator(self.data['val'], self.config.batch_size, self.config.model, shuffle=False)
 
     return train_generator, val_generator
 
@@ -89,7 +87,7 @@ class ModelTrainer:
         )
     )
 
-    callbacks.append(RotationMetricsCallback(metrics_to_track=["loss", "quaternion_loss"], track_validation=True))
+    callbacks.append(RotationMetricsCallback(metrics_to_track=['loss', 'quaternion_loss'], track_validation=True))
 
     # Early stopping
     callbacks.append(
