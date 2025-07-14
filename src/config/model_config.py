@@ -32,6 +32,8 @@ class ModelConfig:
 
   def __post_init__(self) -> None:
     """Validate configuration after initialization."""
+    if self.model == 'relative_pose' and self.branch_type is None:
+      object.__setattr__(self, 'branch_type', 'cnnAspp')
     self._validate()
 
   def _validate(self) -> None:
@@ -52,7 +54,5 @@ class ModelConfig:
       raise ValueError(f'Invalid loss function: {self.loss}')
 
     if self.model == 'relative_pose':
-      if self.branch_type is None:
-        self.branch_type = 'cnnAspp'
       if self.branch_type not in ['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp']:
         raise ValueError(f'Invalid branch type: {self.branch_type}')

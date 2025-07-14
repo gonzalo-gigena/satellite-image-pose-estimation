@@ -54,18 +54,18 @@ class BaseDataLoader:
     self.channels = config.channels
     self.frames = config.frames
 
-  def load_data(self) -> Dict[str, Dict[str, NDArray[np.floating]]]:
+  def load_data(self) -> TrainValData:
     """Load data based on file extension and type.
 
     Returns:
       Dictionary containing train and validation data splits
     """
     # Get all filenames in the folder
-    files: List[str] = [f for f in os.listdir(self.data_path) if f.startswith("cubesat")]
+    files: List[str] = [f for f in os.listdir(self.data_path) if f.startswith('cubesat')]
     files.sort()  # The order of files is importat for loading the images
     return self._process_data(files)
 
-  def _process_data(self, files: List[str]) -> Dict[str, Dict[str, NDArray[np.floating]]]:
+  def _process_data(self, files: List[str]) -> TrainValData:
     """
     Abstract method to process the loaded data.
     Must be implemented by subclasses.
@@ -76,7 +76,7 @@ class BaseDataLoader:
     Returns:
       Processed data dictionary
     """
-    raise NotImplementedError("Subclasses must implement this method")
+    raise NotImplementedError('Subclasses must implement this method')
 
   def _extract_data_from_filename(self, filename: str) -> FileMetadata:
     """
@@ -97,15 +97,15 @@ class BaseDataLoader:
     # Extract the relevant parts of the filename
     # filePath =
     # $"{screenshotFolder}/{sat.name}_{sat.index}_{sat.numBurst}_{sat.burstIndex}_{sat.time}_{satPos}_{satRot}.jpg";
-    file_name_parts: List[str] = filename.split("_")
+    file_name_parts: List[str] = filename.split('_')
 
     _: str = file_name_parts[0]  # satellite name
     i: str = file_name_parts[1]
     j: str = file_name_parts[2]
     k: str = file_name_parts[3]
     elapsed_time: int = int(file_name_parts[4])
-    sat_pos: NDArray[np.floating] = np.array(list(map(float, file_name_parts[5].split(","))))
-    sat_rot: NDArray[np.floating] = np.array(list(map(float, file_name_parts[6].replace(".jpg", "").split(","))))
+    sat_pos: NDArray[np.floating] = np.array(list(map(float, file_name_parts[5].split(','))))
+    sat_rot: NDArray[np.floating] = np.array(list(map(float, file_name_parts[6].replace('.jpg', '').split(','))))
 
     # TODO: normalize elapsed_time [0, 1)
     return i, j, k, elapsed_time, sat_pos, sat_rot
@@ -124,7 +124,7 @@ class BaseDataLoader:
 
     # Load the image
     if self.channels == 1:
-      img = load_img(image_path, color_mode="grayscale")
+      img = load_img(image_path, color_mode='grayscale')
     else:
       img = load_img(image_path)
 
@@ -157,13 +157,13 @@ class BaseDataLoader:
 
     # Return dictionary containing all splits
     return {
-        "train": {"image_data": images_train, "numerical": num_train, "targets": targets_train},
-        "val": {"image_data": images_val, "numerical": num_val, "targets": targets_val},
+        'train': {'image_data': images_train, 'numerical': num_train, 'targets': targets_train},
+        'val': {'image_data': images_val, 'numerical': num_val, 'targets': targets_val},
     }
 
 
 class DataLoader(BaseDataLoader):
-  def _process_data(self, files: List[str]) -> Dict[str, Dict[str, NDArray[np.floating]]]:
+  def _process_data(self, files: List[str]) -> TrainValData:
     """
     Process data by converting images to grayscale and extracting pixels
 
@@ -181,16 +181,16 @@ class DataLoader(BaseDataLoader):
     start_time = ti.time()
     files = files[: self.frames * 1000]
     # Create progress bar for sequences
-    print(f"Processing {len(files)} images ...")
+    print(f'Processing {len(files)} images ...')
     num_sequences = len(files) // self.frames
-    with tqdm(total=num_sequences, desc="Processing sequences", unit="seq") as pbar:
+    with tqdm(total=num_sequences, desc='Processing sequences', unit='seq') as pbar:
       for i in range(0, len(files), self.frames):
         files_data: List[FileMetadata] = []
         for j in range(self.frames):
           files_data.append(self._extract_data_from_filename(files[i + j]))
 
         if not self._validate(files_data):
-          pbar.set_postfix_str("Skipped invalid sequence")
+          pbar.set_postfix_str('Skipped invalid sequence')
           pbar.update(1)
           continue
 
@@ -220,7 +220,7 @@ class DataLoader(BaseDataLoader):
 
     end_time = ti.time()
     execution_time = end_time - start_time
-    print(f"Processing time: {execution_time:.4f} seconds")
+    print(f'Processing time: {execution_time:.4f} seconds')
 
     # (N, 3, 102, 102, 1) (N, 4) (N, 4)
     return self._split_data(images_array, numerical_data_norm, targets_array)
