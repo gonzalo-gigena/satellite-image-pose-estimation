@@ -1,6 +1,6 @@
 import os
 import time as ti
-from typing import Dict, List, Tuple, TypeAlias, TypedDict
+from typing import List, Tuple, TypeAlias, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -179,7 +179,6 @@ class DataLoader(BaseDataLoader):
     targets: List[NDArray[np.floating]] = []
 
     start_time = ti.time()
-    files = files[: self.frames * 1000]
     # Create progress bar for sequences
     print(f'Processing {len(files)} images ...')
     num_sequences = len(files) // self.frames

@@ -23,6 +23,7 @@ class ModelConfig:
   lr: float = 0.001
   optimizer: str = 'adam'
   loss: str = 'quaternion'
+  load_weights: bool = False
 
   # Output parameters
   log_dir: str = './logs'
@@ -56,3 +57,5 @@ class ModelConfig:
     if self.model == 'relative_pose':
       if self.branch_type not in ['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp']:
         raise ValueError(f'Invalid branch type: {self.branch_type}')
+      if self.load_weights and self.channels != 3:
+        raise ValueError(f'When loading weights channels needs to be 3 not {self.channels}')

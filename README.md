@@ -63,26 +63,29 @@ python src/main.py --data_path <path_to_dataset> [options]
 
 ### Options
 
-| Argument             | Type    | Description                                             | Default      | Choices                                    | Required |
-|----------------------|--------|---------------------------------------------------------|-------------|--------------------------------------------|----------|
-| `--data_path`       | `str`  | Path to the dataset                                    | N/A         | N/A                                        | ✅        |
-| **Data Parameters** |        |                                                         |             |                                            |          |
-| `--train_split`     | `float` | Ratio of training data split                           | `0.8`       | `0` to `1`                                | ❌        |
-| `--validation_split`| `float` | Ratio of validation data split                         | `0.0`       | `0` to `1`                                | ❌        |
-| `--model`          | `str`  | Feature matching method                                 | `'grayscale'` | `'grayscale'`, `'relative_pose'`             | ❌        |
-| **Training Parameters** |     |                                                         |             |                                            |          |
-| `--batch_size`      | `int`  | Batch size for training                               | `32`        | N/A                                        | ❌        |
-| `--frames`          | `int`  | Number of frames per burst                            | `3`         | N/A                                        | ❌        |
-| `--channels`       | `int`  | Number of channels per image                          | `1`         | N/A                                        | ❌        |
-| `--epochs`         | `int`  | Number of training epochs                             | `100`       | N/A                                        | ❌        |
-| `--lr`            | `float` | Learning rate for optimizer                           | `0.001`     | N/A                                        | ❌        |
-| `--optimizer`     | `str`  | Optimizer for training                                | `'adam'`    | `'adam'`, `'sgd'`, `'rmsprop'`            | ❌        |
-| `--loss`         | `str`  | Loss function for training                           | `'quaternion'` | `'quaternion'`, `'angular'`, `'detailed'`, `'geodesic'` | ❌  |
-| **Output Parameters** |      |                                                         |             |                                            |          |
-| `--model_save_path`| `str`  | Path to save the trained model                         | `None`      | N/A                                        | ❌        |
-| `--log_dir`       | `str`  | Directory for tensorboard logs                        | `'./logs'`  | N/A                                        | ❌        |
-| **Miscellaneous Parameters** | |                                             |             |                                            |          |
-| `--seed`          | `int`  | Random seed for reproducibility                        | `42`        | N/A                                        | ❌        |
+| Argument                    | Short | Type     | Description                          | Default        | Choices                                    | Required |
+|-----------------------------|-------|----------|--------------------------------------|----------------|-------------------------------------------|----------|
+| `--data_path`               | `-d`  | `str`    | Path to the dataset                  | N/A            | N/A                                       | ✅        |
+| **Data Parameters**         |       |          |                                      |                |                                           |          |
+| `--train_split`             | `-t`  | `float`  | Ratio of training data split         | `0.8`          | `0` to `1`                               | ❌        |
+| `--validation_split`        | `-v`  | `float`  | Ratio of validation data split       | `0.0`          | `0` to `1`                               | ❌        |
+| `--model`                   | `-m`  | `str`    | Feature matching method              | `'relative_pose'` | `'relative_pose'`                         | ❌        |
+| `--branch_type`             | `-bt` | `str`    | Feature matching method              | `None`         | `'cnnA'`, `'cnnAspp'`, `'cnnB'`, `'cnnBspp'` | ❌        |
+| **Training Parameters**     |       |          |                                      |                |                                           |          |
+| `--load_weights`            | `-lw` | `flag`   | Load pre-trained weights             | `False`        | N/A                                       | ❌        |
+| `--image_height`            | `-ih` | `int`    | Image height                         | `102`          | N/A                                       | ❌        |
+| `--image_width`             | `-iw` | `int`    | Image width                          | `102`          | N/A                                       | ❌        |
+| `--batch_size`              | `-b`  | `int`    | Batch size for training              | `32`           | N/A                                       | ❌        |
+| `--frames`                  | `-f`  | `int`    | Number of frames per burst           | `3`            | N/A                                       | ❌        |
+| `--channels`                | `-c`  | `int`    | Number of channels per image         | `1`            | N/A                                       | ❌        |
+| `--epochs`                  | `-e`  | `int`    | Number of training epochs            | `100`          | N/A                                       | ❌        |
+| `--lr`                      | `-lr` | `float`  | Learning rate for optimizer          | `0.001`        | N/A                                       | ❌        |
+| `--optimizer`               | `-o`  | `str`    | Optimizer for training               | `'adam'`       | `'adam'`, `'sgd'`, `'rmsprop'`           | ❌        |
+| `--loss`                    | `-l`  | `str`    | Loss function for training           | `'quaternion'` | `'quaternion'`, `'angular'`, `'detailed'`, `'geodesic'` | ❌        |
+| **Output Parameters**       |       |          |                                      |                |                                           |          |
+| `--log_dir`                 | `-ld` | `str`    | Directory for tensorboard logs       | `'./logs'`     | N/A                                       | ❌        |
+| **Miscellaneous Parameters**|       |          |                                      |                |                                           |          |
+| `--seed`                    | `-s`  | `int`    | Random seed for reproducibility      | `42`           | N/A                                       | ❌        |
 
 
 ### Examples
@@ -90,17 +93,32 @@ python src/main.py --data_path <path_to_dataset> [options]
 #### Example 1: Basic Usage with Relative Pose Model
 
 ```bash
-python src/main.py --data_path ../satellite-image-generation/SyntheticImages --model relative_pose --frames 5 --channels 3
+python src/main.py -d ../satellite-image-generation/SyntheticImages -m relative_pose -f 5 -c 3
 ```
 
-#### Example 2: Customized Training Parameters
+#### Example 2: Customized Training Parameters with Long Form
 
 ```bash
 python src/main.py --data_path /path/to/data \
-                 --batch_size 64 \
-                 --lr 0.001 \
-                 --epochs 200 \
-                 --loss geodesic
+                   --batch_size 64 \
+                   --lr 0.001 \
+                   --epochs 200 \
+                   --loss geodesic \
+                   --branch_type cnnAspp \
+                   --image_height 128 \
+                   --image_width 128
+```
+
+#### Example 3: Using Short Flags
+
+```bash
+python src/main.py -d /path/to/data -b 64 -lr 0.001 -e 200 -l geodesic -bt cnnAspp -ih 128 -iw 128
+```
+
+#### Example 4: Loading Pre-trained Weights
+
+```bash
+python src/main.py -d /path/to/data -lw -m relative_pose -bt cnnA
 ```
 ---
 
