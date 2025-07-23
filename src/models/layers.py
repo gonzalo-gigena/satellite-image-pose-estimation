@@ -5,12 +5,15 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras import layers
 
+# implementation of https://arxiv.org/pdf/1702.01381
+
 
 class CNNBranch(tf.keras.layers.Layer):
-  def __init__(self, branch_type, **kwargs):
+  def __init__(self, branch_type, load_weights, **kwargs):
     super(CNNBranch, self).__init__(**kwargs)
 
     self.branch_type = branch_type
+    self.load_weights = load_weights
 
     # Determine configuration based on branch type
     self.use_final_pool = branch_type in ['cnnA', 'cnnAspp']
@@ -66,7 +69,7 @@ class CNNBranch(tf.keras.layers.Layer):
     self._output_size = self._calculate_output_size(input_shape)
 
     # Only can load the pretrained weights when have 3 channels otherwise there is a size mismatch
-    if input_shape[-1] == 3:
+    if input_shape[-1] == 3 and self.load_weights:
       self._load_pretrained_weights()
 
     super(CNNBranch, self).build(input_shape)

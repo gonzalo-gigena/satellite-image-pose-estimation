@@ -4,9 +4,15 @@ from tensorflow.keras import layers
 from models.layers import CNNBranch
 
 
-# implementation of https://arxiv.org/pdf/1702.01381
 class RelativePoseModel(tf.keras.Model):
-  def __init__(self, image_height=102, image_width=102, channels=1, frames=3, branch_type='cnnAspp'):
+  def __init__(
+          self,
+          image_height=102,
+          image_width=102,
+          channels=1,
+          frames=3,
+          branch_type='cnnAspp',
+          load_weights=False):
     super(RelativePoseModel, self).__init__()
 
     # Store dimensions
@@ -17,7 +23,7 @@ class RelativePoseModel(tf.keras.Model):
     self.frames = frames
 
     # Create shared CNN branch
-    self.shared_cnn = CNNBranch(self.branch_type)
+    self.shared_cnn = CNNBranch(self.branch_type, load_weights)
 
     # Numerical data processor
     self.numerical_encoder = tf.keras.Sequential(

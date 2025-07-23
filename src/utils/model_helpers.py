@@ -55,14 +55,14 @@ def get_optimizer(optimizer_name: str, learning_rate: float) -> Optimizer:
 
 def get_model(config: ModelConfig) -> Union[GrayscaleModel, RelativePoseModel]:
   """Select and return the appropriate model."""
-  if config.model == 'relative_pose':
-    return RelativePoseModel(
-        config.image_height,
-        config.image_height,
-        config.channels,
-        config.frames,
-        config.branch_type)
-  return GrayscaleModel(config.image_height, config.image_width, config.channels, config.frames)
+  return RelativePoseModel(
+      config.image_height,
+      config.image_height,
+      config.channels,
+      config.frames,
+      config.branch_type,
+      config.load_weights
+  )
 
 
 def get_data_loader(config: ModelConfig) -> DataLoader:
