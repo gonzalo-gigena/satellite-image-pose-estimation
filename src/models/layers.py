@@ -21,7 +21,7 @@ class CNNBranch(tf.keras.layers.Layer):
 
     # Set SPP levels based on branch type
     if branch_type == 'cnnAspp':
-      self.spp_levels = [1, 2, 3, 6]  # 4-level SPP
+      self.spp_levels = [1, 2]  # 4-level SPP
     elif branch_type == 'cnnBspp':
       self.spp_levels = [1, 2, 3, 6, 13]  # 5-level SPP
     else:
@@ -103,7 +103,7 @@ class CNNBranch(tf.keras.layers.Layer):
             layer_params[layer_name]['bias']
         ])
         # Make the entire layer non-trainable
-        layer.trainable = False
+        # layer.trainable = False
 
   # loads weights and bias from layers in hybrid model
   def _get_layer_params(self, file_path: str = '../../pre-trained/hybrid/weights.npy') -> dict:

@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List
 
 import tensorflow as tf
 from tensorflow.keras.losses import Loss
@@ -9,7 +9,6 @@ from data.generator import DataGenerator
 from data.loader import DataLoader, DataSplit
 from losses.custom import (angular_distance_loss, detailed_distance_loss,
                            geodesic_loss, quaternion_loss)
-from models.grayscale import GrayscaleModel
 from models.relative_pose import RelativePoseModel
 
 
@@ -53,7 +52,7 @@ def get_optimizer(optimizer_name: str, learning_rate: float) -> Optimizer:
   return optimizer_class(learning_rate=learning_rate)
 
 
-def get_model(config: ModelConfig) -> Union[GrayscaleModel, RelativePoseModel]:
+def get_model(config: ModelConfig) -> RelativePoseModel:
   """Select and return the appropriate model."""
   return RelativePoseModel(
       config.image_height,

@@ -84,7 +84,7 @@ class BaseDataGenerator(tf.keras.utils.Sequence):
     if self.augment:
       batch_images = self.augmentation(batch_images, training=True)
 
-    return {"image_data": batch_images, "numerical": batch_numerical}, batch_targets
+    return {'image_data': batch_images, 'numerical': batch_numerical}, batch_targets
 
 
 class DataGenerator(BaseDataGenerator):

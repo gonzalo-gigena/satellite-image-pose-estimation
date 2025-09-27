@@ -47,6 +47,8 @@ class BaseDataLoader:
       channels: Number of image channels (1 for grayscale, 3 for RGB)
       burst: Number of burst images
     """
+    self.image_height = config.image_height
+    self.image_width = config.image_width
     self.data_path = config.data_path
     self.train_split = config.train_split
     self.validation_split = config.validation_split
@@ -130,6 +132,11 @@ class BaseDataLoader:
 
     # Convert image to array and normalize
     img_array: NDArray[np.floating] = img_to_array(img) / 255.0
+
+    if img_array.shape[:2] != (self.image_height, self.image_width):
+      raise ValueError(
+          f'Image {filename} has incorrect dimensions {img_array.shape[:2]}, expected ({self.height}, {self.width})')
+
     return img_array
 
   def _split_data(
@@ -179,9 +186,12 @@ class DataLoader(BaseDataLoader):
     targets: List[NDArray[np.floating]] = []
 
     start_time = ti.time()
+
     # Create progress bar for sequences
+    files = files[:self.frames * 1000]
     print(f'Processing {len(files)} images ...')
     num_sequences = len(files) // self.frames
+
     with tqdm(total=num_sequences, desc='Processing sequences', unit='seq') as pbar:
       for i in range(0, len(files), self.frames):
         files_data: List[FileMetadata] = []
