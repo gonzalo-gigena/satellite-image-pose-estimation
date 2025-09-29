@@ -1,6 +1,7 @@
 import os
 import time as ti
-from typing import List, Tuple, TypeAlias, TypedDict
+from dataclasses import dataclass
+from typing import List, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
@@ -11,14 +12,14 @@ from tqdm import tqdm
 
 from config.model_config import ModelConfig
 
-FileMetadata: TypeAlias = Tuple[
-    str,  # sat_index
-    str,  # num_bursts
-    str,  # burst_index
-    int,  # elapsed_time
-    NDArray[np.floating],  # sat_position (3D)
-    NDArray[np.floating],  # sat_rotation (4D quaternion)
-]
+
+@dataclass
+class FileMetadata:
+  sat_name: str
+  sat_index: str
+  elapsed_time: int
+  sat_position: NDArray[np.floating]   # shape (3,)
+  sat_rotation: NDArray[np.floating]   # shape (4,)
 
 
 class DataSplit(TypedDict):
@@ -38,14 +39,6 @@ class BaseDataLoader:
   def __init__(self, config: ModelConfig) -> None:
     """
     Initialize DataLoader with configuration.
-
-    Args:
-      data_path: Path to the data directory
-      train_split: Proportion of data to use for training
-      validation_split: Proportion of data to use for validation
-      seed: Random seed for data splitting
-      channels: Number of image channels (1 for grayscale, 3 for RGB)
-      burst: Number of burst images
     """
     self.image_height = config.image_height
     self.image_width = config.image_width
@@ -57,103 +50,91 @@ class BaseDataLoader:
     self.frames = config.frames
 
   def load_data(self) -> TrainValData:
-    """Load data based on file extension and type.
+    """
+    Load data based on file extension and type.
 
     Returns:
       Dictionary containing train and validation data splits
     """
-    # Get all filenames in the folder
     files: List[str] = [f for f in os.listdir(self.data_path) if f.startswith('cubesat')]
-    files.sort()  # The order of files is importat for loading the images
+    files.sort()  # The order of files is important for loading the images
     return self._process_data(files)
 
   def _process_data(self, files: List[str]) -> TrainValData:
     """
     Abstract method to process the loaded data.
     Must be implemented by subclasses.
-
-    Args:
-      files: List of filenames to process
-
-    Returns:
-      Processed data dictionary
     """
     raise NotImplementedError('Subclasses must implement this method')
 
-  def _extract_data_from_filename(self, filename: str) -> FileMetadata:
+  def _extract_metadata_from_filename(self, filename: str) -> FileMetadata:
     """
     Extract timestamp, satellite position, and rotation from filename.
 
-    Args:
-      filename: Name of the image file
-
-    Returns:
-      Tuple containing:
-        - i: Satellite index
-        - j: Number of bursts
-        - k: Burst index
-        - elapsed_time: Time elapsed
-        - sat_pos: Numpy array of satellite position
-        - sat_rot: Numpy array of satellite rotation (quaternion)
+    Filename format:
+      <sat_name>_<sat_index>_<time>_<pos>_<rot>.jpg
     """
-    # Extract the relevant parts of the filename
-    # filePath =
-    # $"{screenshotFolder}/{sat.name}_{sat.index}_{sat.numBurst}_{sat.burstIndex}_{sat.time}_{satPos}_{satRot}.jpg";
     file_name_parts: List[str] = filename.split('_')
+    if len(file_name_parts) < 5:
+      raise ValueError(f'Unexpected filename format: {filename}')
 
-    _: str = file_name_parts[0]  # satellite name
-    i: str = file_name_parts[1]
-    j: str = file_name_parts[2]
-    k: str = file_name_parts[3]
-    elapsed_time: int = int(file_name_parts[4])
-    sat_pos: NDArray[np.floating] = np.array(list(map(float, file_name_parts[5].split(','))))
-    sat_rot: NDArray[np.floating] = np.array(list(map(float, file_name_parts[6].replace('.jpg', '').split(','))))
+    sat_pos: NDArray[np.floating] = np.array(
+        list(map(float, file_name_parts[3].split(','))), dtype=np.float32
+    )
+    sat_rot: NDArray[np.floating] = np.array(
+        list(map(float, file_name_parts[4].replace('.jpg', '').split(','))),
+        dtype=np.float32,
+    )
 
-    # TODO: normalize elapsed_time [0, 1)
-    return i, j, k, elapsed_time, sat_pos, sat_rot
+    return FileMetadata(
+        sat_name=file_name_parts[0],
+        sat_index=file_name_parts[1],
+        elapsed_time=int(file_name_parts[2]),
+        sat_position=sat_pos,
+        sat_rotation=sat_rot,
+    )
+
+  def _validate(self, data: List[FileMetadata]) -> bool:
+    """
+    Validate that all files in a sequence belong to the same sat_index and burst.
+    """
+    if not data:
+      return False
+
+    first_index = data[0].sat_index
+
+    return all(d.sat_index == first_index for d in data)
 
   def _get_pixels(self, filename: str) -> NDArray[np.floating]:
     """
     Load an image, normalize, and return the pixel values.
-
-    Args:
-      filename: Name of the image file
-
-    Returns:
-      Normalized image array
     """
     image_path: str = os.path.join(self.data_path, filename)
 
-    # Load the image
     if self.channels == 1:
       img = load_img(image_path, color_mode='grayscale')
     else:
       img = load_img(image_path)
 
-    # Convert image to array and normalize
     img_array: NDArray[np.floating] = img_to_array(img) / 255.0
 
     if img_array.shape[:2] != (self.image_height, self.image_width):
       raise ValueError(
-          f'Image {filename} has incorrect dimensions {img_array.shape[:2]}, expected ({self.height}, {self.width})')
+          f'Image {filename} has incorrect dimensions {img_array.shape[:2]}, '
+          f'expected ({self.image_height}, {self.image_width})'
+      )
 
     return img_array
 
   def _split_data(
-      self, images: NDArray[np.floating], numerical_data: NDArray[np.floating], targets: NDArray[np.floating]
+      self,
+      images: NDArray[np.floating],
+      numerical_data: NDArray[np.floating],
+      targets: NDArray[np.floating]
   ) -> TrainValData:
     """
     Split the data into training and validation sets.
-
-    Args:
-      images: Numpy array of data
-      numerical_data: Numpy array of numerical features (timestamps, satellite positions)
-      targets: Numpy array of target values (satellite rotations)
-
-    Returns:
-      Dictionary containing train and validation splits for all data types
     """
-    # Use sklearn's train_test_split to split the data
     images_train, images_val, num_train, num_val, targets_train, targets_val = train_test_split(
         images,
         numerical_data,
@@ -162,11 +143,21 @@ class BaseDataLoader:
         random_state=self.seed,
     )
 
-    # Return dictionary containing all splits
-    return {
-        'train': {'image_data': images_train, 'numerical': num_train, 'targets': targets_train},
-        'val': {'image_data': images_val, 'numerical': num_val, 'targets': targets_val},
-    }
+    training = DataSplit(
+        image_data=images_train,
+        numerical=num_train,
+        targets=targets_train
+    )
+    validation = DataSplit(
+        image_data=images_val,
+        numerical=num_val,
+        targets=targets_val
+    )
+
+    return TrainValData(
+        train=training,
+        val=validation
+    )
 
 
 class DataLoader(BaseDataLoader):
@@ -188,31 +179,28 @@ class DataLoader(BaseDataLoader):
     start_time = ti.time()
 
     # Create progress bar for sequences
-    files = files[:self.frames * 1000]
+    files = files[:self.frames * 10]
     print(f'Processing {len(files)} images ...')
     num_sequences = len(files) // self.frames
 
     with tqdm(total=num_sequences, desc='Processing sequences', unit='seq') as pbar:
       for i in range(0, len(files), self.frames):
-        files_data: List[FileMetadata] = []
-        for j in range(self.frames):
-          files_data.append(self._extract_data_from_filename(files[i + j]))
+        burst_files = files[i:i + self.frames]
+        files_metadata: List[FileMetadata] = [self._extract_metadata_from_filename(f) for f in burst_files]
 
-        if not self._validate(files_data):
+        if not self._validate(files_metadata):
           pbar.set_postfix_str('Skipped invalid sequence')
           pbar.update(1)
           continue
 
         # Load image and get grayscale pixels
-        pixels: List[NDArray[np.floating]] = []
-        for j in range(self.frames):
-          pixels.append(self._get_pixels(files[i + j]))
+        pixels: List[NDArray[np.floating]] = [self._get_pixels(f) for f in burst_files]
 
         # Append data to lists
         images.append(pixels)
-        time.append(files_data[-1][-3])  # time elapsed of last image
-        positions.append(files_data[-1][-2])  # sat position of last image
-        targets.append(files_data[-1][-1])  # sat rotation of last image
+        time.append(files_metadata[-1].elapsed_time)
+        positions.append(files_metadata[-1].sat_position)
+        targets.append(files_metadata[-1].sat_rotation)
 
         pbar.update(1)
 
@@ -233,20 +221,3 @@ class DataLoader(BaseDataLoader):
 
     # (N, 3, 102, 102, 1) (N, 4) (N, 4)
     return self._split_data(images_array, numerical_data_norm, targets_array)
-
-  def _validate(self, data: List[FileMetadata]) -> bool:
-    """
-    Validate that all files in a sequence belong to the same position and burst.
-
-    Args:
-      data: List of extracted file data tuples
-
-    Returns:
-      True if validation passes, False otherwise
-    """
-    for i in range(len(data) - 1):
-      if data[i][0] != data[i + 1][0]:
-        return False  # Make sure images are in the same position
-      if data[i][1] != data[i + 1][1]:
-        return False  # Make sure images are in the same burst
-    return True
