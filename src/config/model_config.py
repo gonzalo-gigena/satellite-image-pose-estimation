@@ -24,7 +24,7 @@ class ModelConfig:
   optimizer: str = 'adam'
   loss: str = 'quaternion'
   load_weights: bool = False
-  load_best_model: bool = False
+  resume_training: bool = False
 
   # Output parameters
   log_dir: str = './logs'
