@@ -1,4 +1,5 @@
 import os
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -26,7 +27,11 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
   def __init__(
       self,
       metrics_to_track: List[str],
-      plot_path: str = 'model_training_metrics_plot.png',
+      channels: int = 1,
+      frames: int = 3,
+      image_height: int = 102,
+      image_width: int = 102,
+      load_weights: bool = False,
       figsize: tuple = (22, 12),
       track_validation: bool = False,
       colors: Optional[Dict[str, str]] = None,
@@ -42,6 +47,8 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
     """
     super().__init__()
     self.metrics_to_track = metrics_to_track
+    weights = 'weights' if load_weights else 'noweights'
+    plot_path = f'{image_height}_{image_width}_{frames}_{weights}_{channels}_{time.time()}.png'
     self.plot_path = Path(plot_path)
     self.figsize = figsize
     self.track_validation = track_validation
@@ -226,7 +233,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       save_freq: Union[int, str] = 'epoch',
       save_weights_only: bool = False,
       verbose: int = 1,
-      load_best_on_start: bool = False,
+      resume_training: bool = False,
       channels: int = 1,
       frames: int = 3,
       image_height: int = 102,
@@ -244,7 +251,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       save_weights_only: Whether to save only weights
       save_freq: Save frequency in epochs
       verbose: Verbosity level
-      load_best_on_start: Whether to load best model when training starts
+      resume_training: Whether to resume from best checkpoint
       **kwargs: Additional arguments for ModelCheckpoint
     """
     self.frames = frames
@@ -252,7 +259,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     self.image_width = image_width
     self.channels = channels
     self.log_dir = Path(log_dir)
-    self.checkpoints_dir = self.log_dir / 'checkpoints'
+    self.checkpoints_dir = self.log_dir / f'checkpoints/{image_height}_{image_width}_{frames}_{channels}'
     self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
     self.file_format = '.weights.h5' if save_weights_only else '.keras'
 
@@ -278,7 +285,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     self.mode = mode
     self.max_models = max_models
     self.metric_name = monitor
-    self.load_best_on_start = load_best_on_start
+    self.resume_training = resume_training
     self.checkpoints: List[Checkpoint] = []
     self._load_existing_checkpoints()
 
@@ -292,7 +299,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     """Called at the beginning of training."""
     super().on_train_begin(logs)
 
-    if self.load_best_on_start and self.checkpoints:
+    if self.resume_training and self.checkpoints:
       best_checkpoint = self.checkpoints[0]
       try:
         self.model.build({})

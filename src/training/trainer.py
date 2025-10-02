@@ -26,7 +26,6 @@ class ModelTrainer:
       max_models: int = 10,
       monitor_metric: str = 'quaternion_loss',
       monitor_mode: str = 'min',
-      resume_training: bool = True,
       use_lr_scheduler: bool = True,
   ) -> None:
     """Initialize the enhanced trainer.
@@ -36,14 +35,12 @@ class ModelTrainer:
         max_models: Maximum number of models to keep
         monitor_metric: Metric to monitor for model selection
         monitor_mode: 'min' or 'max' for metric optimization
-        resume_training: Whether to resume from best checkpoint
         use_lr_scheduler: Whether to use learning rate scheduler
     """
     self.config = config
     self.max_models = max_models
     self.monitor_metric = monitor_metric
     self.monitor_mode = monitor_mode
-    self.resume_training = resume_training
     self.use_lr_scheduler = use_lr_scheduler
 
     # Initialize model and data
@@ -80,7 +77,7 @@ class ModelTrainer:
             log_dir=self.config.log_dir,
             max_models=self.max_models,
             monitor=self.monitor_metric,
-            load_best_on_start=self.config.load_best_model,
+            resume_training=self.config.resume_training,
             channels=self.config.channels,
             frames=self.config.frames,
             image_height=self.config.image_height,
@@ -88,13 +85,15 @@ class ModelTrainer:
         )
     )
 
-    weights = 'weights' if self.config.load_weights else 'noweights'
-    plot_path = f'{self.config.image_height}_{self.config.image_width}_{self.config.frames}_{weights}_{self.config.channels}_{time.time()}.png'
     callbacks.append(
         RotationMetricsCallback(
             metrics_to_track=[self.monitor_metric],
             track_validation=True,
-            plot_path=plot_path
+            channels=self.config.channels,
+            frames=self.config.frames,
+            image_height=self.config.image_height,
+            image_width=self.config.image_width,
+            load_weights=self.config.load_weights
         )
     )
 
