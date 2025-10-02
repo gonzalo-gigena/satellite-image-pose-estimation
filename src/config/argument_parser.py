@@ -38,6 +38,7 @@ def parse_args() -> ModelConfig:
       loss=args.loss,
       log_dir=args.log_dir,
       seed=args.seed,
+      load_best_model=args.load_best_model
   )
 
   return config
@@ -74,6 +75,8 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
   training_group = parser.add_argument_group('Training Parameters')
 
   training_group.add_argument('-lw', '--load_weights', action='store_true')
+
+  training_group.add_argument('-lbm', '--load_best_model', action='store_true')
 
   training_group.add_argument('-ih', '--image_height', type=int, default=102, help='Image height')
 

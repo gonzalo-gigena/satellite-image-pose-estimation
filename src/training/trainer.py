@@ -80,7 +80,7 @@ class ModelTrainer:
             log_dir=self.config.log_dir,
             max_models=self.max_models,
             monitor=self.monitor_metric,
-            load_best_on_start=False,
+            load_best_on_start=self.config.load_best_model,
             channels=self.config.channels,
             frames=self.config.frames,
             image_height=self.config.image_height,

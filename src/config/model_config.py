@@ -9,7 +9,7 @@ class ModelConfig:
   # Data parameters
   data_path: str
   train_split: float = 0.8
-  validation_split: float = 0.0
+  validation_split: float = 0.1
   model: str = 'grayscale'
   branch_type: str = None
 
@@ -24,6 +24,7 @@ class ModelConfig:
   optimizer: str = 'adam'
   loss: str = 'quaternion'
   load_weights: bool = False
+  load_best_model: bool = False
 
   # Output parameters
   log_dir: str = './logs'
