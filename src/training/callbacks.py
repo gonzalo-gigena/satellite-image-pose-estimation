@@ -127,20 +127,24 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=self.figsize)
     fig.suptitle('Model Training Performance', size=20, y=1.02)
-    axes = axes.flatten()
+    # Normalize axes to a flat list
+    if isinstance(axes, np.ndarray):
+      axes = axes.flatten()
+    else:
+      axes = [axes]
 
     # Plot each metric
     for i, metric_name in enumerate(self.metrics_to_track):
       val_values = self.metrics.get(f'val_{metric_name}') if self.track_validation else None
       self._plot_metric(axes[i], metric_name, self.metrics[metric_name], val_values)
 
-    # Remove empty subplots
-    for j in range(i + 1, len(axes)):
+    # Remove extra axes (if grid is larger than n_metrics)
+    for j in range(n_metrics, len(axes)):
       fig.delaxes(axes[j])
 
     plt.tight_layout()
     self.plot_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(self.plot_path, bbox_inches='tight', dpi=300)
+    plt.savefig(Path('./plots') / self.plot_path, bbox_inches='tight', dpi=300)
     plt.close()
 
   def _print_metric_statistics(self) -> None:

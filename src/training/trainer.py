@@ -1,3 +1,4 @@
+import time
 from typing import Tuple
 
 import tensorflow as tf
@@ -79,7 +80,7 @@ class ModelTrainer:
             log_dir=self.config.log_dir,
             max_models=self.max_models,
             monitor=self.monitor_metric,
-            load_best_on_start=True,
+            load_best_on_start=False,
             channels=self.config.channels,
             frames=self.config.frames,
             image_height=self.config.image_height,
@@ -87,19 +88,35 @@ class ModelTrainer:
         )
     )
 
-    callbacks.append(RotationMetricsCallback(metrics_to_track=['loss', 'quaternion_loss'], track_validation=True))
+    weights = 'weights' if self.config.load_weights else 'noweights'
+    plot_path = f'{self.config.image_height}_{self.config.image_width}_{self.config.frames}_{weights}_{self.config.channels}_{time.time()}.png'
+    callbacks.append(
+        RotationMetricsCallback(
+            metrics_to_track=[self.monitor_metric],
+            track_validation=True,
+            plot_path=plot_path
+        )
+    )
 
     # Early stopping
     callbacks.append(
         tf.keras.callbacks.EarlyStopping(
-            monitor=self.monitor_metric, patience=15, restore_best_weights=True, mode=self.monitor_mode, verbose=1
+            monitor=self.monitor_metric,
+            patience=15,
+            restore_best_weights=True,
+            mode=self.monitor_mode,
+            verbose=1
         )
     )
 
     # Reduce learning rate on plateau
     callbacks.append(
         tf.keras.callbacks.ReduceLROnPlateau(
-            monitor=self.monitor_metric, factor=0.5, patience=8, min_lr=1e-7, verbose=1
+            monitor=self.monitor_metric,
+            factor=0.5,
+            patience=8,
+            min_lr=1e-7,
+            verbose=1
         )
     )
     return callbacks
@@ -122,7 +139,11 @@ class ModelTrainer:
 
     # Train model
     history = self.model.fit(
-        train_generator, validation_data=val_generator, epochs=self.config.epochs, callbacks=callbacks, verbose=1
+        train_generator,
+        validation_data=val_generator,
+        epochs=self.config.epochs,
+        callbacks=callbacks,
+        verbose=1
     )
 
     return self.model, history
