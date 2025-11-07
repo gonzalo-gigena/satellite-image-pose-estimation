@@ -12,7 +12,9 @@ class RelativePoseModel(tf.keras.Model):
           channels=1,
           frames=3,
           branch_type='cnnAspp',
-          load_weights=False):
+          load_weights=False,
+          train_weights=False
+  ):
     super(RelativePoseModel, self).__init__()
 
     # Store dimensions
@@ -23,7 +25,7 @@ class RelativePoseModel(tf.keras.Model):
     self.frames = frames
 
     # Create shared CNN branch
-    self.shared_cnn = CNNBranch(self.branch_type, load_weights)
+    self.shared_cnn = CNNBranch(self.branch_type, load_weights, train_weights, image_width, image_height)
 
     # Numerical data processor
     self.numerical_encoder = tf.keras.Sequential(

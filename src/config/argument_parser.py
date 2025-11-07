@@ -26,6 +26,7 @@ def parse_args() -> ModelConfig:
       validation_split=args.validation_split,
       model=args.model,
       load_weights=args.load_weights,
+      train_weights=args.train_weights,
       branch_type=args.branch_type,
       batch_size=args.batch_size,
       frames=args.frames,
@@ -58,23 +59,14 @@ def _add_data_arguments(parser: argparse.ArgumentParser) -> None:
       '-m', '--model', type=str, default='relative_pose', choices=['relative_pose'], help='Feature matching method'
   )
 
-  data_group.add_argument(
-      '-bt', '--branch_type',
-      type=str,
-      default=None,
-      choices=[
-          'cnnA',
-          'cnnAspp',
-          'cnnB',
-          'cnnBspp'],
-      help='Feature matching method')
-
 
 def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
   """Add training-related arguments to parser."""
   training_group = parser.add_argument_group('Training Parameters')
 
   training_group.add_argument('-lw', '--load_weights', action='store_true')
+
+  training_group.add_argument('-tw', '--train_weights', action='store_true')
 
   training_group.add_argument('-rt', '--resume_training', action='store_true')
 
@@ -95,6 +87,17 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
   training_group.add_argument(
       '-o', '--optimizer', type=str, default='adam', choices=['adam', 'sgd', 'rmsprop'], help='Optimizer for training'
   )
+
+  training_group.add_argument(
+      '-bt', '--branch_type',
+      type=str,
+      default=None,
+      choices=[
+          'cnnA',
+          'cnnAspp',
+          'cnnB',
+          'cnnBspp'],
+      help='Feature matching method')
 
   training_group.add_argument(
       '-l', '--loss',

@@ -179,7 +179,6 @@ class DataLoader(BaseDataLoader):
     start_time = ti.time()
 
     # Create progress bar for sequences
-    files = files[:self.frames * 10]
     print(f'Processing {len(files)} images ...')
     num_sequences = len(files) // self.frames
 

@@ -24,6 +24,7 @@ class ModelConfig:
   optimizer: str = 'adam'
   loss: str = 'quaternion'
   load_weights: bool = False
+  train_weights: bool = False
   resume_training: bool = False
 
   # Output parameters
@@ -60,3 +61,6 @@ class ModelConfig:
         raise ValueError(f'Invalid branch type: {self.branch_type}')
       if self.load_weights and self.channels != 3:
         raise ValueError(f'When loading weights channels needs to be 3 not {self.channels}')
+
+    if self.train_weights and not self.load_weights:
+      raise ValueError(f'When using -tw also use -lw')
