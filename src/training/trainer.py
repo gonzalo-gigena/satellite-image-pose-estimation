@@ -10,9 +10,9 @@ from tensorflow.keras.optimizers import Optimizer
 from config.model_config import ModelConfig
 from data.generator import DataGenerator
 from data.loader import TrainValData
-from utils.model_helpers import (get_data_loader, get_loss_function,
-                                 get_metrics, get_model, get_optimizer,
-                                 get_train_generator)
+from utils.model_helpers import (generate_path, get_data_loader,
+                                 get_loss_function, get_metrics, get_model,
+                                 get_optimizer, get_train_generator)
 
 from .callbacks import EnhancedModelCheckpoint, RotationMetricsCallback
 
@@ -70,6 +70,7 @@ class ModelTrainer:
   def _create_callbacks(self) -> list:
     """Create enhanced callbacks for training."""
     callbacks = []
+    path = generate_path(self.config)
 
     # Enhanced model checkpoint
     callbacks.append(
@@ -78,10 +79,7 @@ class ModelTrainer:
             max_models=self.max_models,
             monitor=self.monitor_metric,
             resume_training=self.config.resume_training,
-            channels=self.config.channels,
-            frames=self.config.frames,
-            image_height=self.config.image_height,
-            image_width=self.config.image_width,
+            path=path
         )
     )
 
@@ -89,11 +87,7 @@ class ModelTrainer:
         RotationMetricsCallback(
             metrics_to_track=[self.monitor_metric],
             track_validation=True,
-            channels=self.config.channels,
-            frames=self.config.frames,
-            image_height=self.config.image_height,
-            image_width=self.config.image_width,
-            load_weights=self.config.load_weights
+            path=path,
         )
     )
 

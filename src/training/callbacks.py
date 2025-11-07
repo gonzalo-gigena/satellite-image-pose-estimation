@@ -27,14 +27,11 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
   def __init__(
       self,
       metrics_to_track: List[str],
-      channels: int = 1,
-      frames: int = 3,
-      image_height: int = 102,
-      image_width: int = 102,
-      load_weights: bool = False,
+      path: str,
       figsize: tuple = (22, 12),
       track_validation: bool = False,
       colors: Optional[Dict[str, str]] = None,
+      plot_dir: str = None
   ):
     """Initialize the callback.
 
@@ -45,14 +42,23 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
       track_validation: Whether to track validation metrics
       colors: Dictionary mapping metric names to plot colors
     """
-    super().__init__()
     self.metrics_to_track = metrics_to_track
-    weights = 'weights' if load_weights else 'noweights'
-    plot_path = f'{image_height}_{image_width}_{frames}_{weights}_{channels}_{time.time()}.png'
-    self.plot_path = Path(plot_path)
+
+    # Determine the base directory (two levels above current file)
+    base_dir = Path(__file__).resolve().parents[2]
+    plot_dir = plot_dir or base_dir / 'plots'
+
+    # Create folder if it doesn’t exist
+    self.plot_dir = Path(plot_dir)
+    self.plot_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a timestamped plot file name
+    self.plot_path = self.plot_dir / f'{path}_{time.time()}.png'
+
     self.figsize = figsize
     self.track_validation = track_validation
     self.early_stopping_epoch: Optional[int] = None
+    super().__init__()
 
     # Default colors for metrics (using a color cycle)
     default_colors = [
@@ -150,8 +156,7 @@ class RotationMetricsCallback(tf.keras.callbacks.Callback):
       fig.delaxes(axes[j])
 
     plt.tight_layout()
-    self.plot_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(Path('./plots') / self.plot_path, bbox_inches='tight', dpi=300)
+    plt.savefig(self.plot_path, bbox_inches='tight', dpi=300)
     plt.close()
 
   def _print_metric_statistics(self) -> None:
@@ -234,10 +239,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       save_weights_only: bool = False,
       verbose: int = 1,
       resume_training: bool = False,
-      channels: int = 1,
-      frames: int = 3,
-      image_height: int = 102,
-      image_width: int = 102,
+      path: str = '',
       **kwargs,
   ):
     """Initialize the enhanced checkpoint callback.
@@ -254,12 +256,13 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       resume_training: Whether to resume from best checkpoint
       **kwargs: Additional arguments for ModelCheckpoint
     """
-    self.frames = frames
-    self.image_height = image_height
-    self.image_width = image_width
-    self.channels = channels
-    self.log_dir = Path(log_dir)
-    self.checkpoints_dir = self.log_dir / f'checkpoints/{image_height}_{image_width}_{frames}_{channels}'
+
+    # Determine the base directory (two levels above current file)
+    base_dir = Path(__file__).resolve().parents[2]
+    self.log_dir = base_dir / log_dir
+    self.log_dir.mkdir(parents=True, exist_ok=True)
+
+    self.checkpoints_dir = self.log_dir / f'checkpoints/{path}'
     self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
     self.file_format = '.weights.h5' if save_weights_only else '.keras'
 

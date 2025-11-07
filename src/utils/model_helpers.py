@@ -18,7 +18,22 @@ def get_metrics() -> List[tf.keras.metrics.Metric]:
   Returns:
     List of Keras metrics for training monitoring and optimization
   """
-  return ['mae', quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss]
+  # return ['mae', quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss]
+  return ['mae', quaternion_loss]
+
+
+def generate_path(config: ModelConfig) -> str:
+  path = (
+      f'{config.image_height}_'
+      f'{config.image_width}_'
+      f'{config.frames}_'
+      f'{int(config.load_weights)}_'
+      f'{int(config.train_weights)}_'
+      f'{config.channels}_'
+      f'{config.branch_type}'
+  )
+
+  return path
 
 
 def get_loss_function(loss_name: str) -> Loss:
@@ -60,7 +75,8 @@ def get_model(config: ModelConfig) -> RelativePoseModel:
       config.channels,
       config.frames,
       config.branch_type,
-      config.load_weights
+      config.load_weights,
+      config.train_weights
   )
 
 
