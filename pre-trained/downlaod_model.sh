@@ -31,4 +31,4 @@ mv $SCRIPT_DIR/$MODEL_DIR/*.npy $SCRIPT_DIR/$MODEL_DIR/weights.npy
 # Clean up the container and image
 docker stop $CONTAINER_NAME
 docker rm $CONTAINER_NAME
-docker rmi $IMAGE_NAMEe
+docker rmi $IMAGE_NAME
