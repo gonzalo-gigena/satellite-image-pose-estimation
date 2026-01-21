@@ -115,3 +115,15 @@ def get_train_generator(
       batch_size=batch_size,
       augment=augment,
   )
+
+
+def calculate_max_sequences(config: ModelConfig) -> int:
+  """Calculate maximum sequences that fit within memory limit."""
+  factor = 2
+  dtype_bytes = 4  # float32
+
+  memory_limit_bytes = (config.memory_limit_gb // factor) * (1024 ** 3)
+  bytes_per_sequence = config.frames * config.image_height * config.image_width * config.channels * dtype_bytes
+  max_sequences = int(memory_limit_bytes // bytes_per_sequence)
+
+  return max_sequences
