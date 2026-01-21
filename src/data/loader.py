@@ -47,12 +47,12 @@ class BaseDataLoader:
     self.seed = config.seed
     self.channels = config.channels
     self.frames = config.frames
-  
+
   def load_files(self) -> None:
     files: List[str] = [f for f in os.listdir(self.data_path) if f.startswith('cubesat')]
     files.sort()  # The order of files is important for loading the images
     return files
-  
+
   def load_data(self, files_chunk) -> TrainValData:
     """
     Load data based on file extension and type.

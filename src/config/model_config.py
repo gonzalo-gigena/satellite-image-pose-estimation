@@ -33,7 +33,7 @@ class ModelConfig:
 
   # Miscellaneous parameters
   seed: int = 42
-  
+
   # Hardcoded Params
   max_models: int = 10
   monitor_metric: str = 'quaternion_loss'
@@ -58,8 +58,8 @@ class ModelConfig:
 
     if self.train_split + self.validation_split > 1:
       raise ValueError(
-        f'Train split ({self.train_split}) + validation split ({self.validation_split}) '
-        f'must not exceed 1.0, got {self.train_split + self.validation_split}.'
+          f'Train split ({self.train_split}) + validation split ({self.validation_split}) '
+          f'must not exceed 1.0, got {self.train_split + self.validation_split}.'
       )
 
     # Validate model type
@@ -82,12 +82,12 @@ class ModelConfig:
       valid_branch_types = ['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp']
       if self.branch_type not in valid_branch_types:
         raise ValueError(
-          f'Invalid branch type: {self.branch_type}. '
-          f'Must be one of {valid_branch_types}.'
+            f'Invalid branch type: {self.branch_type}. '
+            f'Must be one of {valid_branch_types}.'
         )
       if self.load_weights and self.channels != 3:
         raise ValueError(
-          f'When loading weights, channels must be 3, got {self.channels}.'
+            f'When loading weights, channels must be 3, got {self.channels}.'
         )
 
     # Validate training flags
@@ -112,5 +112,5 @@ class ModelConfig:
 
     if self.image_height <= 0 or self.image_width <= 0:
       raise ValueError(
-        f'Image dimensions must be positive, got height={self.image_height}, width={self.image_width}.'
+          f'Image dimensions must be positive, got height={self.image_height}, width={self.image_width}.'
       )

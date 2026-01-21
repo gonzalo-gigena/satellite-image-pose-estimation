@@ -364,12 +364,12 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     self._sort_checkpoints()
 
     should_save = False
-    
+
     if len(self.checkpoints) < self.max_models:
       should_save = True
     else:
       worst_metric = self.checkpoints[self.max_models - 1].metric_value
-      
+
       if self.mode == 'min':
         should_save = current < worst_metric
       else:
