@@ -268,8 +268,8 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
 
     # Create dynamic filepath pattern
     epoch_part = '{epoch:03d}'
-    metric_name = monitor  # e.g., 'quaternion_loss'
-    metric_value = f'{{{monitor}:.6f}}'  # e.g., '{quaternion_loss:.6f}'
+    metric_name = monitor
+    metric_value = f'{{{monitor}:.6f}}'
     filename = f'{epoch_part}_{metric_name}_{metric_value}{self.file_format}'
     filepath = str(self.checkpoints_dir / filename)
 
@@ -305,7 +305,6 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
     if self.resume_training and self.checkpoints:
       best_checkpoint = self.checkpoints[0]
       try:
-        self.model.build({})
         # Load only weights to avoid optimizer state mismatch
         self.model.load_weights(best_checkpoint.filepath, skip_mismatch=True)
         if self.verbose > 0:
@@ -353,26 +352,43 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
 
   def _save_model(self, epoch, batch, logs):
     """Override parent's _save_model to add checkpoint management."""
+    # epoch is 0-indexed
+    if (epoch + 1) % 5 != 0:
+      return
+
     # Get current metric value
     current = logs.get(self.monitor)
     if current is None:
       return
 
-    # Call parent's save method
-    super()._save_model(epoch, batch, logs)
-
-    # Add checkpoint to our list
-    checkpoint_path = self.filepath.format(epoch=epoch + 1, monitor=self.monitor, **logs)
-
-    checkpoint = Checkpoint(
-        filepath=checkpoint_path, epoch=epoch + 1, metric_value=current, metric_name=self.metric_name
-    )
-    self.checkpoints.append(checkpoint)
-
     self._sort_checkpoints()
 
-    # Manage checkpoint count
-    self._cleanup_old_checkpoints()
+    should_save = False
+    
+    if len(self.checkpoints) < self.max_models:
+      should_save = True
+    else:
+      worst_metric = self.checkpoints[self.max_models - 1].metric_value
+      
+      if self.mode == 'min':
+        should_save = current < worst_metric
+      else:
+        should_save = current > worst_metric
+
+    if should_save:
+      super()._save_model(epoch, batch, logs)
+
+      # Add checkpoint to our list
+      checkpoint_path = self.filepath.format(epoch=epoch + 1, monitor=self.monitor, **logs)
+      checkpoint = Checkpoint(
+          filepath=checkpoint_path, epoch=epoch + 1, metric_value=current, metric_name=self.metric_name
+      )
+      self.checkpoints.append(checkpoint)
+
+      self._sort_checkpoints()
+
+      # Manage checkpoint count
+      self._cleanup_old_checkpoints()
 
   def _cleanup_old_checkpoints(self) -> None:
     """Remove old checkpoints to maintain max_models limit."""
@@ -389,7 +405,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
           print(f'Failed to remove {cp.filepath}: {e}')
 
       # Keep only the best models
-      self.checkpoints = self.checkpoints[: self.max_models]
+      self.checkpoints = self.checkpoints[:self.max_models]
 
   def get_best_model_path(self) -> Optional[str]:
     """Get the filepath of the best model."""
@@ -411,9 +427,9 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       return False
 
     try:
-      self.model.load_weights(best_checkpoint.filepath, by_name=True, skip_mismatch=True)
+      best_checkpoint = self.checkpoints[0]  # Fixed: define before use
+      model.load_weights(best_path, by_name=True, skip_mismatch=True)  # Fixed: use model param
       if self.verbose > 0:
-        best_checkpoint = self.checkpoints[0]
         print(
             f'\nLoaded best model from epoch {best_checkpoint.epoch} '
             f'with {self.metric_name}: {best_checkpoint.metric_value:.6f}'
