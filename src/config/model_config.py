@@ -15,7 +15,7 @@ class ModelConfig:
   branch_type: Optional[str] = None
 
   # Training parameters
-  batch_size: int = 32
+  batch_size: int = 128
   frames: int = 3
   image_height: int = 102
   image_width: int = 102
@@ -26,7 +26,7 @@ class ModelConfig:
   loss: str = 'quaternion'
   load_weights: bool = False
   train_weights: bool = False
-  resume_training: bool = False
+  resume_training: bool = True
 
   # Output parameters
   log_dir: str = './logs'
@@ -39,6 +39,7 @@ class ModelConfig:
   monitor_metric: str = 'quaternion_loss'
   monitor_mode: str = 'min'
   use_lr_scheduler: bool = True
+  memory_limit_gb: float = 62  # 64 is for mendieta, adjust as necessary
 
   def __post_init__(self) -> None:
     """Validate configuration after initialization."""

@@ -23,7 +23,7 @@ def parse_args() -> ModelConfig:
   config_dict = {
       field.name: getattr(args, field.name)
       for field in fields(ModelConfig)
-      if hasattr(args, field.name)
+      if hasattr(args, field.name) and getattr(args, field.name) is not None
   }
 
   return ModelConfig(**config_dict)
@@ -36,17 +36,17 @@ def _add_data_arguments(parser: argparse.ArgumentParser) -> None:
   data_group.add_argument('-d', '--data_path', type=str, required=True, help='Path to the dataset')
 
   data_group.add_argument(
-      '-t', '--train_split', type=float, default=0.8,
+      '-t', '--train_split', type=float,
       help='Ratio of training data split (must be between 0 and 1, and train_split + validation_split <= 1)'
   )
 
   data_group.add_argument(
-      '-v', '--validation_split', type=float, default=0.0,
+      '-v', '--validation_split', type=float,
       help='Ratio of validation data split (must be between 0 and 1, and train_split + validation_split <= 1)'
   )
 
   data_group.add_argument(
-      '-m', '--model', type=str, default='relative_pose', choices=['relative_pose'], help='Model type to use'
+      '-m', '--model', type=str, choices=['relative_pose'], help='Model type to use'
   )
 
 
@@ -69,35 +69,33 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
       help='Resume training from checkpoint'
   )
 
-  training_group.add_argument('-ih', '--image_height', type=int, default=102, help='Image height')
+  training_group.add_argument('-ih', '--image_height', type=int, help='Image height')
 
-  training_group.add_argument('-iw', '--image_width', type=int, default=102, help='Image width')
+  training_group.add_argument('-iw', '--image_width', type=int, help='Image width')
 
-  training_group.add_argument('-b', '--batch_size', type=int, default=32, help='Batch size for training')
+  training_group.add_argument('-b', '--batch_size', type=int, help='Batch size for training')
 
-  training_group.add_argument('-f', '--frames', type=int, default=3, help='Number of frames per burst')
+  training_group.add_argument('-f', '--frames', type=int, help='Number of frames per burst')
 
-  training_group.add_argument('-c', '--channels', type=int, default=1, help='Number of channels per image')
+  training_group.add_argument('-c', '--channels', type=int, help='Number of channels per image')
 
-  training_group.add_argument('-e', '--epochs', type=int, default=100, help='Number of training epochs')
+  training_group.add_argument('-e', '--epochs', type=int, help='Number of training epochs')
 
-  training_group.add_argument('-lr', '--lr', type=float, default=0.001, help='Learning rate for optimizer')
+  training_group.add_argument('-lr', '--lr', type=float, help='Learning rate for optimizer')
 
   training_group.add_argument(
-      '-o', '--optimizer', type=str, default='adam', choices=['adam', 'sgd', 'rmsprop'], help='Optimizer for training'
+      '-o', '--optimizer', type=str, choices=['adam', 'sgd', 'rmsprop'], help='Optimizer for training'
   )
 
   training_group.add_argument(
       '-bt', '--branch_type',
       type=str,
-      default=None,
       choices=['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp'],
       help='Branch type for relative_pose model (defaults to cnnAspp if not specified)')
 
   training_group.add_argument(
       '-l', '--loss',
       type=str,
-      default='quaternion',
       choices=['quaternion', 'angular', 'detailed', 'geodesic'],
       help='Loss function for training',
   )
@@ -107,11 +105,11 @@ def _add_output_arguments(parser: argparse.ArgumentParser) -> None:
   """Add output-related arguments to parser."""
   output_group = parser.add_argument_group('Output Parameters')
 
-  output_group.add_argument('-ld', '--log_dir', type=str, default='./logs', help='Directory for tensorboard logs')
+  output_group.add_argument('-ld', '--log_dir', type=str, help='Directory for tensorboard logs')
 
 
 def _add_misc_arguments(parser: argparse.ArgumentParser) -> None:
   """Add miscellaneous arguments to parser."""
   misc_group = parser.add_argument_group('Miscellaneous Parameters')
 
-  misc_group.add_argument('-s', '--seed', type=int, default=42, help='Random seed for reproducibility')
+  misc_group.add_argument('-s', '--seed', type=int, help='Random seed for reproducibility')
