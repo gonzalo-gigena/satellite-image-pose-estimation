@@ -174,60 +174,50 @@ class SpatialPyramidPooling(layers.Layer):
       self.nb_channels = input_shape[1]
     elif self.dim_ordering == 'channels_last':
       self.nb_channels = input_shape[3]
+    # input_shape: (B, H, W, C)
+    h = input_shape[1]
+    w = input_shape[2]
+
+    if not isinstance(h, int) or not isinstance(w, int):
+      raise ValueError(
+          'SpatialPyramidPooling requires static spatial dimensions, '
+          f'got H={h}, W={w}'
+      )
+
+    self.pool_params = []
+
+    for pool in self.pool_list:
+      k_h = int(np.ceil(h / pool))
+      k_w = int(np.ceil(w / pool))
+      s_h = int(np.floor(h / pool))
+      s_w = int(np.floor(w / pool))
+
+      self.pool_params.append((k_h, k_w, s_h, s_w))
+
     super(SpatialPyramidPooling, self).build(input_shape)
 
   def compute_output_shape(self, input_shape):
     return (input_shape[0], self.nb_channels * self.num_outputs_per_channel)
 
-  def call(self, x, mask=None):
-    input_shape = tf.shape(x)
-
-    if self.dim_ordering == 'channels_first':
-      num_rows = input_shape[2]
-      num_cols = input_shape[3]
-      axis = (2, 3)
-    elif self.dim_ordering == 'channels_last':
-      num_rows = input_shape[1]
-      num_cols = input_shape[2]
-      axis = (1, 2)
-
+  def call(self, x):
     outputs = []
 
-    for pool in self.pool_list:
-      h_step = tf.cast(num_rows, tf.float32) / tf.cast(pool, tf.float32)
-      w_step = tf.cast(num_cols, tf.float32) / tf.cast(pool, tf.float32)
+    for (k_h, k_w, s_h, s_w) in self.pool_params:
+      pooled = tf.nn.max_pool2d(
+          x,
+          ksize=[1, k_h, k_w, 1],
+          strides=[1, s_h, s_w, 1],
+          padding='SAME'
+      )
 
-      for jy in range(pool):
-        for ix in range(pool):
-          # Use proper floating point division and ensure non-zero sizes
-          y1 = tf.cast(tf.math.floor(tf.cast(jy, tf.float32) * h_step), tf.int32)
-          y2 = tf.cast(tf.math.ceil(tf.cast(jy + 1, tf.float32) * h_step), tf.int32)
-          x1 = tf.cast(tf.math.floor(tf.cast(ix, tf.float32) * w_step), tf.int32)
-          x2 = tf.cast(tf.math.ceil(tf.cast(ix + 1, tf.float32) * w_step), tf.int32)
+      pooled = tf.reshape(
+          pooled,
+          [tf.shape(x)[0], -1]
+      )
 
-          # Ensure minimum size of 1x1
-          y2 = tf.maximum(y2, y1 + 1)
-          x2 = tf.maximum(x2, x1 + 1)
+      outputs.append(pooled)
 
-          # Clamp to valid ranges
-          y1 = tf.maximum(0, tf.minimum(y1, num_rows - 1))
-          y2 = tf.maximum(y1 + 1, tf.minimum(y2, num_rows))
-          x1 = tf.maximum(0, tf.minimum(x1, num_cols - 1))
-          x2 = tf.maximum(x1 + 1, tf.minimum(x2, num_cols))
-
-          new_shape = [input_shape[0], y2 - y1, x2 - x1, input_shape[3]]
-
-          x_crop = x[:, :, y1:y2, x1:x2] if self.dim_ordering == 'channels_first' else x[:, y1:y2, x1:x2, :]
-          xm = tf.reshape(x_crop, new_shape)
-          pooled_val = tf.reduce_max(xm, axis=axis)
-          outputs.append(pooled_val)
-
-    outputs = tf.concat(outputs, axis=1)
-    if self.dim_ordering == 'channels_last':
-      outputs = tf.concat(outputs, axis=1)
-      outputs = tf.reshape(outputs, (input_shape[0], self.num_outputs_per_channel * self.nb_channels))
-
-    return outputs
+    return tf.concat(outputs, axis=-1)
 
   def get_config(self):
     config = {'pool_list': self.pool_list}
