@@ -1,4 +1,5 @@
 import argparse
+from dataclasses import fields
 
 from .model_config import ModelConfig
 
@@ -6,43 +7,26 @@ from .model_config import ModelConfig
 def parse_args() -> ModelConfig:
   """Parse command line arguments and return ModelConfig object."""
   parser = argparse.ArgumentParser(
-      description='Machine Learning Model Parameters', formatter_class=argparse.ArgumentDefaultsHelpFormatter
+      description='Machine Learning Model Parameters',
+      formatter_class=argparse.ArgumentDefaultsHelpFormatter
   )
 
   _add_data_arguments(parser)
-
   _add_training_arguments(parser)
-
   _add_output_arguments(parser)
-
   _add_misc_arguments(parser)
 
   args = parser.parse_args()
 
-  # Convert argparse.Namespace to Config
-  config = ModelConfig(
-      data_path=args.data_path,
-      train_split=args.train_split,
-      validation_split=args.validation_split,
-      model=args.model,
-      load_weights=args.load_weights,
-      train_weights=args.train_weights,
-      branch_type=args.branch_type,
-      batch_size=args.batch_size,
-      frames=args.frames,
-      channels=args.channels,
-      image_height=args.image_height,
-      image_width=args.image_width,
-      epochs=args.epochs,
-      lr=args.lr,
-      optimizer=args.optimizer,
-      loss=args.loss,
-      log_dir=args.log_dir,
-      seed=args.seed,
-      resume_training=args.resume_training
-  )
+  # Convert argparse.Namespace to ModelConfig using dataclass fields
+  # This automatically maps argument names to config fields
+  config_dict = {
+      field.name: getattr(args, field.name)
+      for field in fields(ModelConfig)
+      if hasattr(args, field.name)
+  }
 
-  return config
+  return ModelConfig(**config_dict)
 
 
 def _add_data_arguments(parser: argparse.ArgumentParser) -> None:
@@ -51,12 +35,18 @@ def _add_data_arguments(parser: argparse.ArgumentParser) -> None:
 
   data_group.add_argument('-d', '--data_path', type=str, required=True, help='Path to the dataset')
 
-  data_group.add_argument('-t', '--train_split', type=float, default=0.8, help='Ratio of training data split')
-
-  data_group.add_argument('-v', '--validation_split', type=float, default=0.0, help='Ratio of validation data split')
+  data_group.add_argument(
+      '-t', '--train_split', type=float, default=0.8,
+      help='Ratio of training data split (must be between 0 and 1, and train_split + validation_split <= 1)'
+  )
 
   data_group.add_argument(
-      '-m', '--model', type=str, default='relative_pose', choices=['relative_pose'], help='Feature matching method'
+      '-v', '--validation_split', type=float, default=0.0,
+      help='Ratio of validation data split (must be between 0 and 1, and train_split + validation_split <= 1)'
+  )
+
+  data_group.add_argument(
+      '-m', '--model', type=str, default='relative_pose', choices=['relative_pose'], help='Model type to use'
   )
 
 
@@ -64,11 +54,20 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
   """Add training-related arguments to parser."""
   training_group = parser.add_argument_group('Training Parameters')
 
-  training_group.add_argument('-lw', '--load_weights', action='store_true')
+  training_group.add_argument(
+      '-lw', '--load_weights', action='store_true',
+      help='Load pre-trained weights'
+  )
 
-  training_group.add_argument('-tw', '--train_weights', action='store_true')
+  training_group.add_argument(
+      '-tw', '--train_weights', action='store_true',
+      help='Train loaded weights (requires --load_weights)'
+  )
 
-  training_group.add_argument('-rt', '--resume_training', action='store_true')
+  training_group.add_argument(
+      '-rt', '--resume_training', action='store_true',
+      help='Resume training from checkpoint'
+  )
 
   training_group.add_argument('-ih', '--image_height', type=int, default=102, help='Image height')
 
@@ -92,12 +91,8 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
       '-bt', '--branch_type',
       type=str,
       default=None,
-      choices=[
-          'cnnA',
-          'cnnAspp',
-          'cnnB',
-          'cnnBspp'],
-      help='Feature matching method')
+      choices=['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp'],
+      help='Branch type for relative_pose model (defaults to cnnAspp if not specified)')
 
   training_group.add_argument(
       '-l', '--loss',

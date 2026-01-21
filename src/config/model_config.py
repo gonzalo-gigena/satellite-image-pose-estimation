@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 # Immutable
@@ -9,9 +10,9 @@ class ModelConfig:
   # Data parameters
   data_path: str
   train_split: float = 0.8
-  validation_split: float = 0.1
-  model: str = 'grayscale'
-  branch_type: str = None
+  validation_split: float = 0.0
+  model: str = 'relative_pose'
+  branch_type: Optional[str] = None
 
   # Training parameters
   batch_size: int = 32
@@ -32,35 +33,84 @@ class ModelConfig:
 
   # Miscellaneous parameters
   seed: int = 42
+  
+  # Hardcoded Params
+  max_models: int = 10
+  monitor_metric: str = 'quaternion_loss'
+  monitor_mode: str = 'min'
+  use_lr_scheduler: bool = True
 
   def __post_init__(self) -> None:
     """Validate configuration after initialization."""
+    # Set default branch_type for relative_pose model
     if self.model == 'relative_pose' and self.branch_type is None:
       object.__setattr__(self, 'branch_type', 'cnnAspp')
     self._validate()
 
   def _validate(self) -> None:
     """Validate configuration parameters."""
+    # Validate split ratios
     if not 0 <= self.train_split <= 1:
-      raise ValueError('Train split must be between 0 and 1.')
+      raise ValueError(f'Train split must be between 0 and 1, got {self.train_split}.')
 
     if not 0 <= self.validation_split <= 1:
-      raise ValueError('Validation split must be between 0 and 1.')
+      raise ValueError(f'Validation split must be between 0 and 1, got {self.validation_split}.')
 
-    if self.model not in ['grayscale', 'relative_pose']:
-      raise ValueError(f'Invalid model: {self.model}')
+    if self.train_split + self.validation_split > 1:
+      raise ValueError(
+        f'Train split ({self.train_split}) + validation split ({self.validation_split}) '
+        f'must not exceed 1.0, got {self.train_split + self.validation_split}.'
+      )
 
-    if self.optimizer not in ['adam', 'sgd', 'rmsprop']:
-      raise ValueError(f'Invalid optimizer: {self.optimizer}')
+    # Validate model type
+    valid_models = ['grayscale', 'relative_pose']
+    if self.model not in valid_models:
+      raise ValueError(f'Invalid model: {self.model}. Must be one of {valid_models}.')
 
-    if self.loss not in ['quaternion', 'angular', 'detailed', 'geodesic']:
-      raise ValueError(f'Invalid loss function: {self.loss}')
+    # Validate optimizer
+    valid_optimizers = ['adam', 'sgd', 'rmsprop']
+    if self.optimizer not in valid_optimizers:
+      raise ValueError(f'Invalid optimizer: {self.optimizer}. Must be one of {valid_optimizers}.')
 
+    # Validate loss function
+    valid_losses = ['quaternion', 'angular', 'detailed', 'geodesic']
+    if self.loss not in valid_losses:
+      raise ValueError(f'Invalid loss function: {self.loss}. Must be one of {valid_losses}.')
+
+    # Validate relative_pose specific parameters
     if self.model == 'relative_pose':
-      if self.branch_type not in ['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp']:
-        raise ValueError(f'Invalid branch type: {self.branch_type}')
+      valid_branch_types = ['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp']
+      if self.branch_type not in valid_branch_types:
+        raise ValueError(
+          f'Invalid branch type: {self.branch_type}. '
+          f'Must be one of {valid_branch_types}.'
+        )
       if self.load_weights and self.channels != 3:
-        raise ValueError(f'When loading weights channels needs to be 3 not {self.channels}')
+        raise ValueError(
+          f'When loading weights, channels must be 3, got {self.channels}.'
+        )
 
+    # Validate training flags
     if self.train_weights and not self.load_weights:
-      raise ValueError(f'When using -tw also use -lw')
+      raise ValueError('When using --train_weights (-tw), --load_weights (-lw) must also be set.')
+
+    # Validate positive numeric parameters
+    if self.batch_size <= 0:
+      raise ValueError(f'Batch size must be positive, got {self.batch_size}.')
+
+    if self.epochs <= 0:
+      raise ValueError(f'Epochs must be positive, got {self.epochs}.')
+
+    if self.lr <= 0:
+      raise ValueError(f'Learning rate must be positive, got {self.lr}.')
+
+    if self.frames <= 0:
+      raise ValueError(f'Frames must be positive, got {self.frames}.')
+
+    if self.channels <= 0:
+      raise ValueError(f'Channels must be positive, got {self.channels}.')
+
+    if self.image_height <= 0 or self.image_width <= 0:
+      raise ValueError(
+        f'Image dimensions must be positive, got height={self.image_height}, width={self.image_width}.'
+      )
