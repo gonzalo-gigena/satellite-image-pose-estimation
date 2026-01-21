@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -31,37 +31,48 @@ class BaseDataGenerator(tf.keras.utils.Sequence):
       **kwargs: Additional arguments for PyDataset compatibility
     """
     super().__init__(**kwargs)
-    self.images = tf.convert_to_tensor(images, dtype=tf.float32)
-    self.numerical = tf.convert_to_tensor(numerical, dtype=tf.float32)
-    self.targets = tf.convert_to_tensor(targets, dtype=tf.float32)
+    # Keep as numpy for faster indexing
+    self.images = np.ascontiguousarray(images, dtype=np.float32)
+    self.numerical = np.ascontiguousarray(numerical, dtype=np.float32)
+    self.targets = np.ascontiguousarray(targets, dtype=np.float32)
     self.batch_size = batch_size
-    self.indexes: NDArray[np.int_] = np.arange(len(self.targets))
     self.shuffle = shuffle
+    self.augment = augment
+    self.n_samples = len(self.targets)
 
-    # If shuffle is True, shuffle the indices right away
+    # Pre-compute batch indices
+    self.indexes: NDArray[np.int_] = np.arange(self.n_samples)
+    self._batch_indices: List[NDArray[np.int_]] = []
+    self._compute_batch_indices()
+
+    # Initialize augmentation layer once
+    if self.augment:
+      self.augmentation: tf.keras.Sequential = tf.keras.Sequential(
+          [
+              tf.keras.layers.RandomBrightness(factor=0.2),
+              tf.keras.layers.RandomContrast(factor=0.2),
+              tf.keras.layers.GaussianNoise(0.1),
+          ]
+      )
+
+  def _compute_batch_indices(self) -> None:
+    """Pre-compute batch indices for all batches."""
     if self.shuffle:
       np.random.shuffle(self.indexes)
 
-    self.augment = augment
-    self.augmentation: tf.keras.Sequential = tf.keras.Sequential(
-        [
-            # Brightness variation (simulate lighting conditions)
-            tf.keras.layers.RandomBrightness(factor=0.2),
-            # Contrast variation (simulate atmospheric effects)
-            tf.keras.layers.RandomContrast(factor=0.2),
-            # Gaussian noise (simulate sensor noise)
-            tf.keras.layers.GaussianNoise(0.1),
-        ]
-    )
+    self._batch_indices = [
+        self.indexes[i * self.batch_size:(i + 1) * self.batch_size]
+        for i in range(len(self))
+    ]
 
   def on_epoch_end(self) -> None:
     """Called at the end of every epoch."""
     if self.shuffle:
-      np.random.shuffle(self.indexes)
+      self._compute_batch_indices()
 
   def __len__(self) -> int:
     """Return the number of batches per epoch."""
-    return int(np.ceil(len(self.targets) / self.batch_size))
+    return int(np.ceil(self.n_samples / self.batch_size))
 
   def __getitem__(self, idx: int) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
     """
@@ -73,13 +84,18 @@ class BaseDataGenerator(tf.keras.utils.Sequence):
     Returns:
       Tuple of (input_dict, targets) where input_dict contains 'image_data' and 'numerical'
     """
-    # Get batch indices
-    batch_indices = self.indexes[idx * self.batch_size: (idx + 1) * self.batch_size]
+    # Use pre-computed batch indices
+    batch_indices = self._batch_indices[idx]
 
-    # Get batch data using indices
-    batch_images = tf.gather(self.images, batch_indices)
-    batch_numerical = tf.gather(self.numerical, batch_indices)
-    batch_targets = tf.gather(self.targets, batch_indices)
+    # Direct numpy indexing (faster than tf.gather for small batches)
+    batch_images = self.images[batch_indices]
+    batch_numerical = self.numerical[batch_indices]
+    batch_targets = self.targets[batch_indices]
+
+    # Convert to tensors
+    batch_images = tf.constant(batch_images, dtype=tf.float32)
+    batch_numerical = tf.constant(batch_numerical, dtype=tf.float32)
+    batch_targets = tf.constant(batch_targets, dtype=tf.float32)
 
     if self.augment:
       batch_images = self.augmentation(batch_images, training=True)

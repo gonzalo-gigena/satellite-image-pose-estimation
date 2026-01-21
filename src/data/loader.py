@@ -1,14 +1,13 @@
 import os
 import time as ti
 from dataclasses import dataclass
-from typing import List, TypedDict
+from typing import List, Tuple, TypedDict
 
 import numpy as np
 from numpy.typing import NDArray
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
-from tqdm import tqdm
 
 from config.model_config import ModelConfig
 
@@ -48,19 +47,22 @@ class BaseDataLoader:
     self.seed = config.seed
     self.channels = config.channels
     self.frames = config.frames
-
-  def load_data(self) -> TrainValData:
+  
+  def load_files(self) -> None:
+    files: List[str] = [f for f in os.listdir(self.data_path) if f.startswith('cubesat')]
+    files.sort()  # The order of files is important for loading the images
+    return files
+  
+  def load_data(self, files_chunk) -> TrainValData:
     """
     Load data based on file extension and type.
 
     Returns:
       Dictionary containing train and validation data splits
     """
-    files: List[str] = [f for f in os.listdir(self.data_path) if f.startswith('cubesat')]
-    files.sort()  # The order of files is important for loading the images
-    return self._process_data(files)
+    return self._process_data(files_chunk)
 
-  def _process_data(self, files: List[str]) -> TrainValData:
+  def _process_data(self, files_chunk: List[str]) -> TrainValData:
     """
     Abstract method to process the loaded data.
     Must be implemented by subclasses.
@@ -161,7 +163,7 @@ class BaseDataLoader:
 
 
 class DataLoader(BaseDataLoader):
-  def _process_data(self, files: List[str]) -> TrainValData:
+  def _process_data(self, files_chunk: List[str]) -> TrainValData:
     """
     Process data by converting images to grayscale and extracting pixels
 
@@ -171,43 +173,34 @@ class DataLoader(BaseDataLoader):
     Returns:
       Processed and split data for training
     """
-    images: List[List[NDArray[np.floating]]] = []
-    time: List[str] = []
-    positions: List[NDArray[np.floating]] = []
-    targets: List[NDArray[np.floating]] = []
-
     start_time = ti.time()
+    print(f'Processing {len(files_chunk)} images ...')
 
-    # Create progress bar for sequences
-    print(f'Processing {len(files)} images ...')
-    num_sequences = len(files) // self.frames
+    # Pre-extract metadata and filter valid bursts
+    valid_bursts: List[Tuple[List[str], List[FileMetadata]]] = []
+    for i in range(0, len(files_chunk), self.frames):
+      burst_files = files_chunk[i:i + self.frames]
+      files_metadata = [self._extract_metadata_from_filename(f) for f in burst_files]
+      if self._validate(files_metadata):
+        valid_bursts.append((burst_files, files_metadata))
 
-    with tqdm(total=num_sequences, desc='Processing sequences', unit='seq') as pbar:
-      for i in range(0, len(files), self.frames):
-        burst_files = files[i:i + self.frames]
-        files_metadata: List[FileMetadata] = [self._extract_metadata_from_filename(f) for f in burst_files]
+    num_bursts = len(valid_bursts)
 
-        if not self._validate(files_metadata):
-          pbar.set_postfix_str('Skipped invalid sequence')
-          pbar.update(1)
-          continue
+    # Preallocate arrays for better memory efficiency
+    images_array: NDArray[np.floating] = np.empty(
+        (num_bursts, self.frames, self.image_height, self.image_width, self.channels),
+        dtype=np.float32
+    )
+    time_array: NDArray[np.floating] = np.empty(num_bursts, dtype=np.float32)
+    positions_array: NDArray[np.floating] = np.empty((num_bursts, 3), dtype=np.float32)
+    targets_array: NDArray[np.floating] = np.empty((num_bursts, 4), dtype=np.float32)
 
-        # Load image and get grayscale pixels
-        pixels: List[NDArray[np.floating]] = [self._get_pixels(f) for f in burst_files]
-
-        # Append data to lists
-        images.append(pixels)
-        time.append(files_metadata[-1].elapsed_time)
-        positions.append(files_metadata[-1].sat_position)
-        targets.append(files_metadata[-1].sat_rotation)
-
-        pbar.update(1)
-
-    # Convert Python lists to NumPy arrays
-    images_array: NDArray[np.floating] = np.array(images)  # shape: (N, B, H, W, C)
-    time_array: NDArray[np.floating] = np.array(time, dtype=np.float32)  # shape: (N,)
-    positions_array: NDArray[np.floating] = np.array(positions)  # shape: (N, 3)
-    targets_array: NDArray[np.floating] = np.array(targets)  # shape: (N, 4)
+    # Load images sequentially
+    for idx, (burst_files, metadata) in enumerate(valid_bursts):
+      images_array[idx] = np.stack([self._get_pixels(f) for f in burst_files])
+      time_array[idx] = metadata[-1].elapsed_time
+      positions_array[idx] = metadata[-1].sat_position
+      targets_array[idx] = metadata[-1].sat_rotation
 
     # Combine time and positions, then normalize together
     numerical_data: NDArray[np.floating] = np.column_stack([time_array, positions_array])
@@ -218,5 +211,4 @@ class DataLoader(BaseDataLoader):
     execution_time = end_time - start_time
     print(f'Processing time: {execution_time:.4f} seconds')
 
-    # (N, 3, 102, 102, 1) (N, 4) (N, 4)
     return self._split_data(images_array, numerical_data_norm, targets_array)
