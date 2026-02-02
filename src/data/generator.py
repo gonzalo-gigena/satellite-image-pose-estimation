@@ -1,10 +1,10 @@
 from typing import Dict, List, Tuple
 
-from data.loader import DataSplit
-
 import numpy as np
 import tensorflow as tf
 from numpy.typing import NDArray
+
+from data.loader import DataSplit
 
 
 class BaseDataGenerator(tf.keras.utils.Sequence):

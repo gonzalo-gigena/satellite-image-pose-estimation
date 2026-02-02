@@ -27,6 +27,7 @@ class DataSplit:
   numerical: NDArray[np.floating]
   targets: NDArray[np.floating]
 
+
 @dataclass
 class TrainValTestData:
   train: DataSplit
@@ -145,42 +146,42 @@ class BaseDataLoader:
     """
     # First split: train vs (val + test)
     images_train, images_temp, num_train, num_temp, targets_train, targets_temp = train_test_split(
-      images,
-      numerical_data,
-      targets,
-      test_size=1 - self.train_split,
-      random_state=self.seed,
-      shuffle=True
+        images,
+        numerical_data,
+        targets,
+        test_size=1 - self.train_split,
+        random_state=self.seed,
+        shuffle=True
     )
-    
+
     # Second split: validation vs test
     val_ratio = self.validation_split / (self.validation_split + self.test_split)
 
     images_val, images_test, num_val, num_test, targets_val, targets_test = train_test_split(
-      images_temp,
-      num_temp,
-      targets_temp,
-      test_size=1 - val_ratio,
-      random_state=self.seed,
-      shuffle=True
+        images_temp,
+        num_temp,
+        targets_temp,
+        test_size=1 - val_ratio,
+        random_state=self.seed,
+        shuffle=True
     )
 
     training = DataSplit(
-      images=images_train,
-      numerical=num_train,
-      targets=targets_train
+        images=images_train,
+        numerical=num_train,
+        targets=targets_train
     )
 
     validation = DataSplit(
-      images=images_val,
-      numerical=num_val,
-      targets=targets_val
+        images=images_val,
+        numerical=num_val,
+        targets=targets_val
     )
 
     testing = DataSplit(
-      images=images_test,
-      numerical=num_test,
-      targets=targets_test
+        images=images_test,
+        numerical=num_test,
+        targets=targets_test
     )
 
     return TrainValTestData(
