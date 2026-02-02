@@ -1,7 +1,7 @@
 import os
 import time as ti
 from dataclasses import dataclass
-from typing import List, Tuple, TypedDict
+from typing import List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,14 +21,16 @@ class FileMetadata:
   sat_rotation: NDArray[np.floating]   # shape (4,)
 
 
-class DataSplit(TypedDict):
-  image_data: NDArray[np.floating]
+@dataclass
+class DataSplit:
+  images: NDArray[np.floating]
   numerical: NDArray[np.floating]
   targets: NDArray[np.floating]
 
-
-class TrainValData(TypedDict):
+@dataclass
+class TrainValTestData:
   train: DataSplit
+  test: DataSplit
   val: DataSplit
 
 
@@ -43,6 +45,7 @@ class BaseDataLoader:
     self.image_width = config.image_width
     self.data_path = config.data_path
     self.train_split = config.train_split
+    self.test_split = config.test_split
     self.validation_split = config.validation_split
     self.seed = config.seed
     self.channels = config.channels
@@ -53,7 +56,7 @@ class BaseDataLoader:
     files.sort()  # The order of files is important for loading the images
     return files
 
-  def load_data(self, files_chunk) -> TrainValData:
+  def load_data(self, files_chunk) -> TrainValTestData:
     """
     Load data based on file extension and type.
 
@@ -62,7 +65,7 @@ class BaseDataLoader:
     """
     return self._process_data(files_chunk)
 
-  def _process_data(self, files_chunk: List[str]) -> TrainValData:
+  def _process_data(self, files_chunk: List[str]) -> TrainValTestData:
     """
     Abstract method to process the loaded data.
     Must be implemented by subclasses.
@@ -103,6 +106,9 @@ class BaseDataLoader:
     if not data:
       return False
 
+    if len(data) != self.frames:
+      return False
+
     first_index = data[0].sat_index
 
     return all(d.sat_index == first_index for d in data)
@@ -133,37 +139,59 @@ class BaseDataLoader:
       images: NDArray[np.floating],
       numerical_data: NDArray[np.floating],
       targets: NDArray[np.floating]
-  ) -> TrainValData:
+  ) -> TrainValTestData:
     """
     Split the data into training and validation sets.
     """
-    images_train, images_val, num_train, num_val, targets_train, targets_val = train_test_split(
-        images,
-        numerical_data,
-        targets,
-        test_size=1 - (self.train_split + self.validation_split),
-        random_state=self.seed,
+    # First split: train vs (val + test)
+    images_train, images_temp, num_train, num_temp, targets_train, targets_temp = train_test_split(
+      images,
+      numerical_data,
+      targets,
+      test_size=1 - self.train_split,
+      random_state=self.seed,
+      shuffle=True
+    )
+    
+    # Second split: validation vs test
+    val_ratio = self.validation_split / (self.validation_split + self.test_split)
+
+    images_val, images_test, num_val, num_test, targets_val, targets_test = train_test_split(
+      images_temp,
+      num_temp,
+      targets_temp,
+      test_size=1 - val_ratio,
+      random_state=self.seed,
+      shuffle=True
     )
 
     training = DataSplit(
-        image_data=images_train,
-        numerical=num_train,
-        targets=targets_train
-    )
-    validation = DataSplit(
-        image_data=images_val,
-        numerical=num_val,
-        targets=targets_val
+      images=images_train,
+      numerical=num_train,
+      targets=targets_train
     )
 
-    return TrainValData(
+    validation = DataSplit(
+      images=images_val,
+      numerical=num_val,
+      targets=targets_val
+    )
+
+    testing = DataSplit(
+      images=images_test,
+      numerical=num_test,
+      targets=targets_test
+    )
+
+    return TrainValTestData(
         train=training,
+        test=testing,
         val=validation
     )
 
 
 class DataLoader(BaseDataLoader):
-  def _process_data(self, files_chunk: List[str]) -> TrainValData:
+  def _process_data(self, files_chunk: List[str]) -> TrainValTestData:
     """
     Process data by converting images to grayscale and extracting pixels
 

@@ -1,5 +1,7 @@
 from typing import Dict, List, Tuple
 
+from data.loader import DataSplit
+
 import numpy as np
 import tensorflow as tf
 from numpy.typing import NDArray
@@ -10,9 +12,7 @@ class BaseDataGenerator(tf.keras.utils.Sequence):
 
   def __init__(
       self,
-      images: NDArray[np.floating],
-      numerical: NDArray[np.floating],
-      targets: NDArray[np.floating],
+      data: DataSplit,
       shuffle: bool = False,
       batch_size: int = 32,
       augment: bool = False,
@@ -32,9 +32,9 @@ class BaseDataGenerator(tf.keras.utils.Sequence):
     """
     super().__init__(**kwargs)
     # Keep as numpy for faster indexing
-    self.images = np.ascontiguousarray(images, dtype=np.float32)
-    self.numerical = np.ascontiguousarray(numerical, dtype=np.float32)
-    self.targets = np.ascontiguousarray(targets, dtype=np.float32)
+    self.images = np.ascontiguousarray(data.images, dtype=np.float32)
+    self.numerical = np.ascontiguousarray(data.numerical, dtype=np.float32)
+    self.targets = np.ascontiguousarray(data.targets, dtype=np.float32)
     self.batch_size = batch_size
     self.shuffle = shuffle
     self.augment = augment
@@ -105,3 +105,30 @@ class BaseDataGenerator(tf.keras.utils.Sequence):
 
 class DataGenerator(BaseDataGenerator):
   pass
+
+
+class ConcatenatedSequence(tf.keras.utils.Sequence):
+  """Concatenate multiple Keras Sequences into a single Sequence."""
+
+  def __init__(self, sequences: List[tf.keras.utils.Sequence]):
+    self.sequences = sequences
+    self._lengths = [len(seq) for seq in sequences]
+    self._cumulative_lengths = np.cumsum(self._lengths)
+
+  def __len__(self) -> int:
+    return int(self._cumulative_lengths[-1])
+
+  def __getitem__(self, idx: int):
+    seq_idx = np.searchsorted(self._cumulative_lengths, idx, side='right')
+
+    if seq_idx == 0:
+      local_idx = idx
+    else:
+      local_idx = idx - self._cumulative_lengths[seq_idx - 1]
+
+    return self.sequences[seq_idx][local_idx]
+
+  def on_epoch_end(self) -> None:
+    for seq in self.sequences:
+      if hasattr(seq, 'on_epoch_end'):
+        seq.on_epoch_end()
