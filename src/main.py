@@ -12,7 +12,7 @@ def main():
 
   # Initialize and run training
   trainer = ModelTrainer(config)
-  model, history = trainer.train()
+  trainer.train()
 
 
 if __name__ == '__main__':

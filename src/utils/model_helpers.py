@@ -1,3 +1,5 @@
+import time
+from pathlib import Path
 from typing import List
 
 import tensorflow as tf
@@ -34,6 +36,16 @@ def generate_path(config: ModelConfig) -> str:
   )
 
   return path
+
+
+def metrics_output_path(config: ModelConfig) -> Path:
+  base_dir = Path(__file__).resolve().parents[2]
+  metrics_dir = base_dir / 'metrics'
+
+  run_name = generate_path(config)
+  metrics_path = metrics_dir / f'{run_name}_{time.time()}.json'
+  metrics_path.parent.mkdir(parents=True, exist_ok=True)
+  return metrics_path
 
 
 def get_loss_function(loss_name: str) -> Loss:
@@ -92,8 +104,8 @@ def get_data_loader(config: ModelConfig) -> DataLoader:
   return DataLoader(config)
 
 
-def get_train_generator(
-    data: DataSplit, batch_size: int, model: str, shuffle: bool = True, augment: bool = False
+def get_data_generator(
+    data: DataSplit, batch_size: int, shuffle: bool = True, augment: bool = False
 ) -> DataGenerator:
   """Create and return the appropriate data generator based on the matching method.
 
@@ -108,9 +120,7 @@ def get_train_generator(
     GrayscaleDataGenerator: The data generator instance
   """
   return DataGenerator(
-      images=data['image_data'],
-      numerical=data['numerical'],
-      targets=data['targets'],
+      data=data,
       shuffle=shuffle,
       batch_size=batch_size,
       augment=augment,
@@ -119,7 +129,7 @@ def get_train_generator(
 
 def calculate_max_sequences(config: ModelConfig) -> int:
   """Calculate maximum sequences that fit within memory limit."""
-  factor = 2
+  factor = 3
   dtype_bytes = 4  # float32
 
   memory_limit_bytes = (config.memory_limit_gb // factor) * (1024 ** 3)
