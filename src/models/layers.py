@@ -172,11 +172,12 @@ class SpatialPyramidPooling(layers.Layer):
   def build(self, input_shape):
     if self.dim_ordering == 'channels_first':
       self.nb_channels = input_shape[1]
+      h = input_shape[2]
+      w = input_shape[3]
     elif self.dim_ordering == 'channels_last':
       self.nb_channels = input_shape[3]
-    # input_shape: (B, H, W, C)
-    h = input_shape[1]
-    w = input_shape[2]
+      h = input_shape[1]
+      w = input_shape[2]
 
     if not isinstance(h, int) or not isinstance(w, int):
       raise ValueError(
@@ -202,20 +203,39 @@ class SpatialPyramidPooling(layers.Layer):
   def call(self, x):
     outputs = []
 
-    for (k_h, k_w, s_h, s_w) in self.pool_params:
-      pooled = tf.nn.max_pool2d(
-          x,
-          ksize=[1, k_h, k_w, 1],
-          strides=[1, s_h, s_w, 1],
-          padding='SAME'
-      )
+    if self.dim_ordering == 'channels_first':
+      for (k_h, k_w, s_h, s_w) in self.pool_params:
+        pooled = tf.nn.max_pool2d(
+            x,
+            ksize=[1, 1, k_h, k_w],
+            strides=[1, 1, s_h, s_w],
+            padding='SAME',
+            data_format='NCHW'
+        )
 
-      pooled = tf.reshape(
-          pooled,
-          [tf.shape(x)[0], -1]
-      )
+        pooled = tf.reshape(
+            pooled,
+            [tf.shape(x)[0], -1]
+        )
 
-      outputs.append(pooled)
+        outputs.append(pooled)
+
+    elif self.dim_ordering == 'channels_last':
+      for (k_h, k_w, s_h, s_w) in self.pool_params:
+        pooled = tf.nn.max_pool2d(
+            x,
+            ksize=[1, k_h, k_w, 1],
+            strides=[1, s_h, s_w, 1],
+            padding='SAME',
+            data_format='NHWC'
+        )
+
+        pooled = tf.reshape(
+            pooled,
+            [tf.shape(x)[0], -1]
+        )
+
+        outputs.append(pooled)
 
     return tf.concat(outputs, axis=-1)
 
