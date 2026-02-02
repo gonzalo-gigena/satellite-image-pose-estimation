@@ -10,8 +10,8 @@ class ModelConfig:
   # Data parameters
   data_path: str
   train_split: float = 0.8
-  validation_split: float = 0.0
-  model: str = 'relative_pose'
+  validation_split: float = 0.1
+  test_split: float = 0.1
   branch_type: Optional[str] = None
 
   # Training parameters
@@ -44,7 +44,7 @@ class ModelConfig:
   def __post_init__(self) -> None:
     """Validate configuration after initialization."""
     # Set default branch_type for relative_pose model
-    if self.model == 'relative_pose' and self.branch_type is None:
+    if self.branch_type is None:
       object.__setattr__(self, 'branch_type', 'cnnAspp')
     self._validate()
 
@@ -63,11 +63,6 @@ class ModelConfig:
           f'must not exceed 1.0, got {self.train_split + self.validation_split}.'
       )
 
-    # Validate model type
-    valid_models = ['grayscale', 'relative_pose']
-    if self.model not in valid_models:
-      raise ValueError(f'Invalid model: {self.model}. Must be one of {valid_models}.')
-
     # Validate optimizer
     valid_optimizers = ['adam', 'sgd', 'rmsprop']
     if self.optimizer not in valid_optimizers:
@@ -79,17 +74,16 @@ class ModelConfig:
       raise ValueError(f'Invalid loss function: {self.loss}. Must be one of {valid_losses}.')
 
     # Validate relative_pose specific parameters
-    if self.model == 'relative_pose':
-      valid_branch_types = ['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp']
-      if self.branch_type not in valid_branch_types:
-        raise ValueError(
-            f'Invalid branch type: {self.branch_type}. '
-            f'Must be one of {valid_branch_types}.'
-        )
-      if self.load_weights and self.channels != 3:
-        raise ValueError(
-            f'When loading weights, channels must be 3, got {self.channels}.'
-        )
+    valid_branch_types = ['cnnA', 'cnnAspp', 'cnnB', 'cnnBspp']
+    if self.branch_type not in valid_branch_types:
+      raise ValueError(
+          f'Invalid branch type: {self.branch_type}. '
+          f'Must be one of {valid_branch_types}.'
+      )
+    if self.load_weights and self.channels != 3:
+      raise ValueError(
+          f'When loading weights, channels must be 3, got {self.channels}.'
+      )
 
     # Validate training flags
     if self.train_weights and not self.load_weights:

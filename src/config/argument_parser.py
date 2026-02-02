@@ -45,10 +45,6 @@ def _add_data_arguments(parser: argparse.ArgumentParser) -> None:
       help='Ratio of validation data split (must be between 0 and 1, and train_split + validation_split <= 1)'
   )
 
-  data_group.add_argument(
-      '-m', '--model', type=str, choices=['relative_pose'], help='Model type to use'
-  )
-
 
 def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
   """Add training-related arguments to parser."""
