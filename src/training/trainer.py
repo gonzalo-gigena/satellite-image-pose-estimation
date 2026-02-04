@@ -12,10 +12,11 @@ from tensorflow.keras.optimizers import Optimizer
 from config.model_config import ModelConfig
 from data.generator import ConcatenatedSequence, DataGenerator
 from data.loader import DataLoader, TrainValTestData
-from utils.model_helpers import (calculate_max_sequences, generate_path,
-                                 get_data_generator, get_data_loader,
-                                 get_loss_function, get_metrics, get_model,
-                                 get_optimizer, metrics_output_path)
+from utils.model_helpers import (calculate_max_sequences, generate_filename,
+                                 generate_output_path, get_data_generator,
+                                 get_data_loader, get_loss_function,
+                                 get_metrics, get_model, get_optimizer,
+                                 plot_quaternion_loss)
 
 from .callbacks import EnhancedModelCheckpoint, RotationMetricsCallback
 
@@ -70,7 +71,7 @@ class ModelTrainer:
   def _create_callbacks(self) -> List[Callback]:
     """Create enhanced callbacks for training."""
     callbacks = []
-    path = generate_path(self._config)
+    path = generate_filename(self._config)
 
     # Enhanced model checkpoint
     callbacks.append(
@@ -128,7 +129,7 @@ class ModelTrainer:
     self._is_compiled = True
 
   def _save_metrics(self, all_metrics: dict) -> None:
-    metrics_path = metrics_output_path(self._config)
+    metrics_path = generate_output_path(self._config, 'metrics')
     with metrics_path.open('w', encoding='utf-8') as f:
       json.dump(all_metrics, f, indent=2)
 
@@ -215,3 +216,4 @@ class ModelTrainer:
     all_metrics['test'] = test_results
 
     self._save_metrics(all_metrics)
+    plot_quaternion_loss(all_metrics, self._config)

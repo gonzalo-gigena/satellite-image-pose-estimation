@@ -1,7 +1,8 @@
 import time
 from pathlib import Path
-from typing import List
+from typing import List, Literal
 
+import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.losses import Loss
 from tensorflow.keras.optimizers import Optimizer
@@ -24,7 +25,7 @@ def get_metrics() -> List[tf.keras.metrics.Metric]:
   return ['mae', quaternion_loss]
 
 
-def generate_path(config: ModelConfig) -> str:
+def generate_filename(config: ModelConfig) -> str:
   path = (
       f'{config.image_height}_'
       f'{config.image_width}_'
@@ -38,12 +39,79 @@ def generate_path(config: ModelConfig) -> str:
   return path
 
 
-def metrics_output_path(config: ModelConfig) -> Path:
-  base_dir = Path(__file__).resolve().parents[2]
-  metrics_dir = base_dir / 'metrics'
+def plot_quaternion_loss(
+    metrics: dict,
+    config: ModelConfig
+):
+  train_loss = metrics['quaternion_loss']
+  val_loss = metrics['val_quaternion_loss']
 
-  run_name = generate_path(config)
-  metrics_path = metrics_dir / f'{run_name}_{time.time()}.json'
+  epochs = range(1, len(train_loss) + 1)
+
+  plt.figure(figsize=(10, 6))
+
+  plt.plot(epochs, train_loss, label='Train Quaternion Loss')
+  plt.plot(
+      epochs,
+      val_loss,
+      linestyle='--',
+      label='Validation Quaternion Loss'
+  )
+
+  plt.xlabel('Epoch')
+  plt.ylabel('Loss')
+
+  # Line legend (only explains curves)
+  plt.legend(loc='upper right')
+
+  # Metadata text box (bottom-left, bold labels)
+  info_text = (
+      r'$\mathbf{Resolution:}$ '
+      f'{config.image_height}×{config.image_width}\n'
+      r'$\mathbf{Frames:}$ '
+      f'{config.frames}\n'
+      r'$\mathbf{Channels:}$ '
+      f'{config.channels}\n'
+      r'$\mathbf{Branch:}$ '
+      f'{config.branch_type}\n'
+      r'$\mathbf{Load\ Weights:}$ '
+      f'{config.load_weights}\n'
+      r'$\mathbf{Train\ Weights:}$ '
+      f'{config.train_weights}'
+  )
+
+  plt.gca().text(
+      0.02,
+      0.02,
+      info_text,
+      transform=plt.gca().transAxes,
+      fontsize=9,
+      verticalalignment='bottom',
+      horizontalalignment='left',
+      bbox=dict(
+          boxstyle='round,pad=0.4',
+          facecolor='white',
+          edgecolor='gray',
+          alpha=0.85
+      )
+  )
+
+  plt.grid(True)
+  plt.tight_layout()
+
+  path = generate_output_path(config, 'plots')
+  plt.savefig(path, dpi=300)
+  plt.close()
+
+
+def generate_output_path(config: ModelConfig, prefix: Literal['plots', 'metrics']) -> Path:
+  base_dir = Path(__file__).resolve().parents[2]
+  metrics_dir = base_dir / prefix
+
+  extension = 'json' if prefix == 'metrics' else 'png'
+
+  run_name = generate_filename(config)
+  metrics_path = metrics_dir / f'{run_name}_{time.time()}.{extension}'
   metrics_path.parent.mkdir(parents=True, exist_ok=True)
   return metrics_path
 
