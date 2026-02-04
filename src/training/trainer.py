@@ -18,7 +18,7 @@ from utils.model_helpers import (calculate_max_sequences, generate_filename,
                                  get_metrics, get_model, get_optimizer,
                                  plot_quaternion_loss)
 
-from .callbacks import EnhancedModelCheckpoint, RotationMetricsCallback
+from .callbacks import EnhancedModelCheckpoint
 
 
 class ModelTrainer:
@@ -81,14 +81,6 @@ class ModelTrainer:
             monitor=self._config.monitor_metric,
             resume_training=self._config.resume_training,
             path=path
-        )
-    )
-
-    callbacks.append(
-        RotationMetricsCallback(
-            metrics_to_track=[self._config.monitor_metric],
-            track_validation=True,
-            path=path,
         )
     )
 
