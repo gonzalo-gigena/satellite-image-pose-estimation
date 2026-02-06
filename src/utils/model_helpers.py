@@ -33,6 +33,7 @@ def generate_filename(config: ModelConfig) -> str:
       f'{int(config.load_weights)}_'
       f'{int(config.train_weights)}_'
       f'{config.channels}_'
+      f'{config.degrees}_'
       f'{config.branch_type}'
   )
 
@@ -72,6 +73,8 @@ def plot_quaternion_loss(
       f'{config.frames}\n'
       r'$\mathbf{Channels:}$ '
       f'{config.channels}\n'
+      r'$\mathbf{Degrees:}$ '
+      f'{config.degrees}\n'
       r'$\mathbf{Branch:}$ '
       f'{config.branch_type}\n'
       r'$\mathbf{Load\ Weights:}$ '

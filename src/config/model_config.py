@@ -22,6 +22,7 @@ class ModelConfig:
   channels: int = 1
   epochs: int = 100
   lr: float = 0.001
+  degrees: int = 1
   optimizer: str = 'adam'
   loss: str = 'quaternion'
   load_weights: bool = False

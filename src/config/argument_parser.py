@@ -33,7 +33,7 @@ def _add_data_arguments(parser: argparse.ArgumentParser) -> None:
   """Add data-related arguments to parser."""
   data_group = parser.add_argument_group('Data Parameters')
 
-  data_group.add_argument('-d', '--data_path', type=str, required=True, help='Path to the dataset')
+  data_group.add_argument('-dp', '--data_path', type=str, required=True, help='Path to the dataset')
 
   data_group.add_argument(
       '-t', '--train_split', type=float,
@@ -65,11 +65,16 @@ def _add_training_arguments(parser: argparse.ArgumentParser) -> None:
       help='Resume training from checkpoint'
   )
 
+  training_group.add_argument(
+      '-d', '--degrees', type=int,
+      help='Synthetic images degree'
+  )
+
   training_group.add_argument('-ih', '--image_height', type=int, help='Image height')
 
   training_group.add_argument('-iw', '--image_width', type=int, help='Image width')
 
-  training_group.add_argument('-b', '--batch_size', type=int, help='Batch size for training')
+  training_group.add_argument('-bs', '--batch_size', type=int, help='Batch size for training')
 
   training_group.add_argument('-f', '--frames', type=int, help='Number of frames per burst')
 
