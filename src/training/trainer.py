@@ -174,24 +174,27 @@ class ModelTrainer:
 
     total_start = time.perf_counter()
     for b in range(0, len(files), files_per_chunk):
-      print(f'Chunk {b//files_per_chunk}')
-      burst_chunk = files[b:b + files_per_chunk]
-      data: TrainValTestData = self._data_loader.load_data(burst_chunk)
+      try:
+        print(f'Chunk {b//files_per_chunk}')
+        burst_chunk = files[b:b + files_per_chunk]
+        data: TrainValTestData = self._data_loader.load_data(burst_chunk)
 
-      # Create data generators
-      train_gen, val_gen, test_gen = self._create_generators(data)
-      test_generators.append(test_gen)
+        # Create data generators
+        train_gen, val_gen, test_gen = self._create_generators(data)
+        test_generators.append(test_gen)
 
-      history, chunk_time = self._train_chunk(
-          train_gen, val_gen, callbacks, global_epoch
-      )
-      chunk_times.append(chunk_time)
+        history, chunk_time = self._train_chunk(
+            train_gen, val_gen, callbacks, global_epoch
+        )
+        chunk_times.append(chunk_time)
 
-      global_epoch += self._config.epochs
+        global_epoch += self._config.epochs
 
-      # merge history for this chunk into a single run
-      for k, v in history.history.items():
-        all_metrics[k].extend(v)
+        # merge history for this chunk into a single run
+        for k, v in history.history.items():
+          all_metrics[k].extend(v)
+      except Exception as e:
+        print(e)
 
     total_elapsed = time.perf_counter() - total_start
     all_metrics['chunk_time_sec'] = chunk_times
