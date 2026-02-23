@@ -40,7 +40,6 @@ class ModelConfig:
   monitor_metric: str = 'quaternion_loss'
   monitor_mode: str = 'min'
   use_lr_scheduler: bool = True
-  memory_limit_gb: float = 62  # 64 is for mendieta, adjust as necessary
 
   def __post_init__(self) -> None:
     """Validate configuration after initialization."""
