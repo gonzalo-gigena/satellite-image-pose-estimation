@@ -1,6 +1,5 @@
 import json
 import time
-from collections import defaultdict
 from typing import List, Tuple
 
 import tensorflow as tf
@@ -10,13 +9,11 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Optimizer
 
 from config.model_config import ModelConfig
-from data.generator import ConcatenatedSequence, DataGenerator
+from data.generator import DataGenerator
 from data.loader import DataLoader, TrainValTestData
-from utils.model_helpers import (calculate_max_sequences, generate_filename,
-                                 generate_output_path, get_data_generator,
-                                 get_data_loader, get_loss_function,
-                                 get_metrics, get_model, get_optimizer,
-                                 plot_quaternion_loss)
+from utils.model_helpers import (generate_filename, generate_output_path,
+                                 get_loss_function, get_metrics, get_model,
+                                 get_optimizer, plot_quaternion_loss)
 
 from .callbacks import EnhancedModelCheckpoint
 
@@ -40,7 +37,7 @@ class ModelTrainer:
     # Initialize model and data
     self._config = config
     self._model: Model = get_model(config)
-    self._data_loader: DataLoader = get_data_loader(self._config)
+    self._data_loader: DataLoader = DataLoader(self._config)
     self._optimizer: Optimizer = get_optimizer(config.optimizer, config.lr)
     self._loss_function: Loss = get_loss_function(config.loss)
     self._metrics = get_metrics()
@@ -48,23 +45,23 @@ class ModelTrainer:
 
   def _create_generators(self, data: TrainValTestData) -> Tuple[DataGenerator, DataGenerator, DataGenerator]:
     """Create training and validation data generators."""
-    train_generator = get_data_generator(
+    train_generator = DataGenerator(
         data=data.train,
-        batch_size=self._config.batch_size,
+        config=self._config,
         shuffle=True,
-    )
+    ).get_dataset()
 
-    val_generator = get_data_generator(
+    val_generator = DataGenerator(
         data=data.val,
-        batch_size=self._config.batch_size,
+        config=self._config,
         shuffle=False
-    )
+    ).get_dataset()
 
-    test_generator = get_data_generator(
+    test_generator = DataGenerator(
         data=data.test,
-        batch_size=self._config.batch_size,
+        config=self._config,
         shuffle=False
-    )
+    ).get_dataset()
 
     return train_generator, val_generator, test_generator
 
@@ -157,57 +154,39 @@ class ModelTrainer:
     return history, elapsed
 
   def train(self) -> None:
-    """Execute the training pipeline."""
+    """Execute the training pipeline using tf.data streaming."""
 
     self._compile_model()
-    callbacks = self._create_callbacks()
-
-    files = self._data_loader.load_files()
-    max_sequences = calculate_max_sequences(self._config)
-    files_per_chunk = max_sequences * self._config.frames
-
-    all_metrics = defaultdict(list)
-
-    global_epoch = 0
-    chunk_times = []
-    test_generators = []
 
     total_start = time.perf_counter()
-    for b in range(0, len(files), files_per_chunk):
-      try:
-        print(f'Chunk {b//files_per_chunk}')
-        burst_chunk = files[b:b + files_per_chunk]
-        data: TrainValTestData = self._data_loader.load_data(burst_chunk)
 
-        # Create data generators
-        train_gen, val_gen, test_gen = self._create_generators(data)
-        test_generators.append(test_gen)
+    # Load full dataset (only file paths + numerical data, no images in memory)
+    files = self._data_loader.load_files()
+    data: TrainValTestData = self._data_loader.load_data(files)
 
-        history, chunk_time = self._train_chunk(
-            train_gen, val_gen, callbacks, global_epoch
-        )
-        chunk_times.append(chunk_time)
+    # Build streaming datasets
+    train_ds, val_ds, test_ds = self._create_generators(data)
 
-        global_epoch += self._config.epochs
+    callbacks = self._create_callbacks()
 
-        # merge history for this chunk into a single run
-        for k, v in history.history.items():
-          all_metrics[k].extend(v)
-      except Exception as e:
-        print(e)
+    history = self._model.fit(
+        train_ds,
+        validation_data=val_ds,
+        epochs=self._config.epochs,
+        callbacks=callbacks,
+        verbose=2,
+    )
 
-    total_elapsed = time.perf_counter() - total_start
-    all_metrics['chunk_time_sec'] = chunk_times
-    all_metrics['total_time_sec'] = total_elapsed
-
-    final_test_generator = ConcatenatedSequence(test_generators)
     test_results = self._model.evaluate(
-        final_test_generator,
+        test_ds,
         verbose=2,
         return_dict=True,
     )
 
-    # merge history for this chunk into a single run
+    total_elapsed = time.perf_counter() - total_start
+
+    all_metrics = dict(history.history)
+    all_metrics['total_time_sec'] = total_elapsed
     all_metrics['test'] = test_results
 
     self._save_metrics(all_metrics)

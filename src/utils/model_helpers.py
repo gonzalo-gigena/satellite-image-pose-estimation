@@ -8,8 +8,6 @@ from tensorflow.keras.losses import Loss
 from tensorflow.keras.optimizers import Optimizer
 
 from config.model_config import ModelConfig
-from data.generator import DataGenerator
-from data.loader import DataLoader, DataSplit
 from losses.custom import (angular_distance_loss, detailed_distance_loss,
                            geodesic_loss, quaternion_loss)
 from models.relative_pose import RelativePoseModel
@@ -161,50 +159,3 @@ def get_model(config: ModelConfig) -> RelativePoseModel:
       config.load_weights,
       config.train_weights
   )
-
-
-def get_data_loader(config: ModelConfig) -> DataLoader:
-  """Select and return the appropriate data loader based on the matching method.
-
-  Args:
-    config: ModelConfig object containing all configuration parameters
-
-  Returns:
-    DataLoader: The appropriate data loader instance
-  """
-  return DataLoader(config)
-
-
-def get_data_generator(
-    data: DataSplit, batch_size: int, shuffle: bool = True, augment: bool = False
-) -> DataGenerator:
-  """Create and return the appropriate data generator based on the matching method.
-
-  Args:
-    data: Dictionary containing the training data with keys 'image_data', 'numerical', 'targets'
-    batch_size: Batch size for training
-    model: Model type identifier (currently unused but kept for future extensibility)
-    shuffle: Whether to shuffle the data
-    augment: Whether to apply data augmentation
-
-  Returns:
-    GrayscaleDataGenerator: The data generator instance
-  """
-  return DataGenerator(
-      data=data,
-      shuffle=shuffle,
-      batch_size=batch_size,
-      augment=augment,
-  )
-
-
-def calculate_max_sequences(config: ModelConfig) -> int:
-  """Calculate maximum sequences that fit within memory limit."""
-  factor = 3
-  dtype_bytes = 4  # float32
-
-  memory_limit_bytes = (config.memory_limit_gb // factor) * (1024 ** 3)
-  bytes_per_sequence = config.frames * config.image_height * config.image_width * config.channels * dtype_bytes
-  max_sequences = int(memory_limit_bytes // bytes_per_sequence)
-
-  return max_sequences
