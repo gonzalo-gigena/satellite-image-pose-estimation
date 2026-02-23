@@ -1,134 +1,108 @@
-from typing import Dict, List, Tuple
-
 import numpy as np
 import tensorflow as tf
-from numpy.typing import NDArray
 
+from config.model_config import ModelConfig
 from data.loader import DataSplit
 
 
-class BaseDataGenerator(tf.keras.utils.Sequence):
-  """Data generator for training with image and numerical data."""
+class DataGenerator:
+  """
+  tf.data based streaming dataset.
+  """
 
   def __init__(
       self,
       data: DataSplit,
+      config: ModelConfig,
       shuffle: bool = False,
-      batch_size: int = 32,
       augment: bool = False,
-      **kwargs
+      debug: bool = False
   ) -> None:
-    """
-    Initialize the data generator.
 
-    Args:
-      images: Image data array
-      numerical: Numerical features array
-      targets: Target values array
-      shuffle: Whether to shuffle data between epochs
-      batch_size: Size of each batch
-      augment: Whether to apply data augmentation
-      **kwargs: Additional arguments for PyDataset compatibility
-    """
-    super().__init__(**kwargs)
-    # Keep as numpy for faster indexing
-    self.images = np.ascontiguousarray(data.images, dtype=np.float32)
-    self.numerical = np.ascontiguousarray(data.numerical, dtype=np.float32)
-    self.targets = np.ascontiguousarray(data.targets, dtype=np.float32)
-    self.batch_size = batch_size
+    self.filepaths = np.array(data.images, dtype=object)[data.indices]
+    self.numerical = data.numerical[data.indices]
+    self.targets = data.targets[data.indices]
+
+    self.image_height = config.image_height
+    self.image_width = config.image_width
+    self.channels = config.channels
+    self.frames = config.frames
+    self.batch_size = config.batch_size
     self.shuffle = shuffle
     self.augment = augment
-    self.n_samples = len(self.targets)
 
-    # Pre-compute batch indices
-    self.indexes: NDArray[np.int_] = np.arange(self.n_samples)
-    self._batch_indices: List[NDArray[np.int_]] = []
-    self._compute_batch_indices()
+    self.debug = debug
+    self._debug_counter = 0
 
-    # Initialize augmentation layer once
+    self.dataset = self._build_dataset()
+
+  def _load_burst(self, burst_paths, numerical, target):
+
+    def _load_image(path):
+      image = tf.io.read_file(path)
+      image = tf.image.decode_jpeg(image, channels=self.channels)
+      image = tf.image.resize(image, [self.image_height, self.image_width])
+      image = tf.cast(image, tf.float32) / 255.0
+      return image
+
+    images = tf.map_fn(
+        _load_image,
+        burst_paths,
+        fn_output_signature=tf.float32
+    )
+
     if self.augment:
-      self.augmentation: tf.keras.Sequential = tf.keras.Sequential(
-          [
-              tf.keras.layers.RandomBrightness(factor=0.2),
-              tf.keras.layers.RandomContrast(factor=0.2),
-              tf.keras.layers.GaussianNoise(0.1),
-          ]
+      images = tf.image.random_brightness(images, 0.2)
+      images = tf.image.random_contrast(images, 0.8, 1.2)
+
+    if self.debug:
+      # Check correct frame count
+      tf.debugging.assert_equal(
+          tf.shape(images)[0],
+          self.frames,
+          message='Incorrect number of frames in burst'
       )
 
-  def _compute_batch_indices(self) -> None:
-    """Pre-compute batch indices for all batches."""
+      # Check pixel range
+      tf.debugging.assert_greater_equal(
+          tf.reduce_min(images),
+          0.0,
+          message='Pixel values below 0'
+      )
+
+      tf.debugging.assert_less_equal(
+          tf.reduce_max(images),
+          1.0,
+          message='Pixel values above 1'
+      )
+
+      # Check non-empty image
+      tf.debugging.assert_greater(
+          tf.reduce_mean(images),
+          0.01,
+          message='Image appears empty or black'
+      )
+
+    return {'image_data': images, 'numerical': numerical}, target
+
+  def _build_dataset(self):
+
+    ds = tf.data.Dataset.from_tensor_slices(
+        (self.filepaths, self.numerical, self.targets)
+    )
+
     if self.shuffle:
-      np.random.shuffle(self.indexes)
+      ds = ds.shuffle(buffer_size=len(self.filepaths))
 
-    self._batch_indices = [
-        self.indexes[i * self.batch_size:(i + 1) * self.batch_size]
-        for i in range(len(self))
-    ]
+    ds = ds.map(
+        self._load_burst,
+        num_parallel_calls=tf.data.AUTOTUNE
+    )
 
-  def on_epoch_end(self) -> None:
-    """Called at the end of every epoch."""
-    if self.shuffle:
-      self._compute_batch_indices()
+    ds = ds.batch(self.batch_size)
+    ds = ds.prefetch(tf.data.AUTOTUNE)
 
-  def __len__(self) -> int:
-    """Return the number of batches per epoch."""
-    return int(np.ceil(self.n_samples / self.batch_size))
+    return ds
 
-  def __getitem__(self, idx: int) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
-    """
-    Generate one batch of data.
-
-    Args:
-      idx: Batch index
-
-    Returns:
-      Tuple of (input_dict, targets) where input_dict contains 'image_data' and 'numerical'
-    """
-    # Use pre-computed batch indices
-    batch_indices = self._batch_indices[idx]
-
-    # Direct numpy indexing (faster than tf.gather for small batches)
-    batch_images = self.images[batch_indices]
-    batch_numerical = self.numerical[batch_indices]
-    batch_targets = self.targets[batch_indices]
-
-    # Convert to tensors
-    batch_images = tf.constant(batch_images, dtype=tf.float32)
-    batch_numerical = tf.constant(batch_numerical, dtype=tf.float32)
-    batch_targets = tf.constant(batch_targets, dtype=tf.float32)
-
-    if self.augment:
-      batch_images = self.augmentation(batch_images, training=True)
-
-    return {'image_data': batch_images, 'numerical': batch_numerical}, batch_targets
-
-
-class DataGenerator(BaseDataGenerator):
-  pass
-
-
-class ConcatenatedSequence(tf.keras.utils.Sequence):
-  """Concatenate multiple Keras Sequences into a single Sequence."""
-
-  def __init__(self, sequences: List[tf.keras.utils.Sequence]):
-    self.sequences = sequences
-    self._lengths = [len(seq) for seq in sequences]
-    self._cumulative_lengths = np.cumsum(self._lengths)
-
-  def __len__(self) -> int:
-    return int(self._cumulative_lengths[-1])
-
-  def __getitem__(self, idx: int):
-    seq_idx = np.searchsorted(self._cumulative_lengths, idx, side='right')
-
-    if seq_idx == 0:
-      local_idx = idx
-    else:
-      local_idx = idx - self._cumulative_lengths[seq_idx - 1]
-
-    return self.sequences[seq_idx][local_idx]
-
-  def on_epoch_end(self) -> None:
-    for seq in self.sequences:
-      if hasattr(seq, 'on_epoch_end'):
-        seq.on_epoch_end()
+  def get_dataset(self) -> tf.data.Dataset:
+    return self.dataset

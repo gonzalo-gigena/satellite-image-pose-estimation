@@ -7,7 +7,6 @@ import numpy as np
 from numpy.typing import NDArray
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from tensorflow.keras.preprocessing.image import img_to_array, load_img
 
 from config.model_config import ModelConfig
 
@@ -23,9 +22,10 @@ class FileMetadata:
 
 @dataclass
 class DataSplit:
-  images: NDArray[np.floating]
+  images: List[List[str]]
   numerical: NDArray[np.floating]
   targets: NDArray[np.floating]
+  indices: NDArray[np.integer]
 
 
 @dataclass
@@ -114,80 +114,56 @@ class BaseDataLoader:
 
     return all(d.sat_index == first_index for d in data)
 
-  def _get_pixels(self, filename: str) -> NDArray[np.floating]:
-    """
-    Load an image, normalize, and return the pixel values.
-    """
-    image_path: str = os.path.join(self.data_path, filename)
-
-    if self.channels == 1:
-      img = load_img(image_path, color_mode='grayscale')
-    else:
-      img = load_img(image_path)
-
-    img_array: NDArray[np.floating] = img_to_array(img) / 255.0
-
-    if img_array.shape[:2] != (self.image_height, self.image_width):
-      raise ValueError(
-          f'Image {filename} has incorrect dimensions {img_array.shape[:2]}, '
-          f'expected ({self.image_height}, {self.image_width})'
-      )
-
-    return img_array
-
   def _split_data(
       self,
-      images: NDArray[np.floating],
-      numerical_data: NDArray[np.floating],
-      targets: NDArray[np.floating]
+      burst_paths: List[List[str]],
+      numerical_data: NDArray[np.float32],
+      targets: NDArray[np.float32]
   ) -> TrainValTestData:
-    """
-    Split the data into training and validation sets.
-    """
-    # First split: train vs (val + test)
-    images_train, images_temp, num_train, num_temp, targets_train, targets_temp = train_test_split(
-        images,
-        numerical_data,
-        targets,
+
+    indices = np.arange(len(burst_paths))
+
+    train_idx, temp_idx = train_test_split(
+        indices,
         test_size=1 - self.train_split,
         random_state=self.seed,
         shuffle=True
     )
 
-    # Second split: validation vs test
     val_ratio = self.validation_split / (self.validation_split + self.test_split)
 
-    images_val, images_test, num_val, num_test, targets_val, targets_test = train_test_split(
-        images_temp,
-        num_temp,
-        targets_temp,
+    val_idx, test_idx = train_test_split(
+        temp_idx,
         test_size=1 - val_ratio,
         random_state=self.seed,
         shuffle=True
     )
 
     training = DataSplit(
-        images=images_train,
-        numerical=num_train,
-        targets=targets_train
+        images=burst_paths,
+        numerical=numerical_data,
+        targets=targets,
+        indices=train_idx
     )
 
     validation = DataSplit(
-        images=images_val,
-        numerical=num_val,
-        targets=targets_val
+        images=burst_paths,
+        numerical=numerical_data,
+        targets=targets,
+        indices=val_idx
     )
 
     testing = DataSplit(
-        images=images_test,
-        numerical=num_test,
-        targets=targets_test
+        images=burst_paths,
+        numerical=numerical_data,
+        targets=targets,
+        indices=test_idx
     )
 
     return TrainValTestData(
         train=training,
-        test=testing,
-        val=validation
+        val=validation,
+        test=testing
     )
 
 
@@ -205,39 +181,35 @@ class DataLoader(BaseDataLoader):
     start_time = ti.time()
     print(f'Processing {len(files_chunk)} images ...')
 
-    # Pre-extract metadata and filter valid bursts
-    valid_bursts: List[Tuple[List[str], List[FileMetadata]]] = []
+    # Pre-extract metadata and filter valid bursts (store only last frame's metadata)
+    valid_bursts: List[Tuple[List[str], FileMetadata]] = []
     for i in range(0, len(files_chunk), self.frames):
       burst_files = files_chunk[i:i + self.frames]
       files_metadata = [self._extract_metadata_from_filename(f) for f in burst_files]
+
       if self._validate(files_metadata):
-        valid_bursts.append((burst_files, files_metadata))
+        valid_bursts.append((burst_files, files_metadata[-1]))
 
-    num_bursts = len(valid_bursts)
+    burst_paths: List[List[str]] = []
+    time_array = []
+    positions_array = []
+    targets_array = []
 
-    # Preallocate arrays for better memory efficiency
-    images_array: NDArray[np.floating] = np.empty(
-        (num_bursts, self.frames, self.image_height, self.image_width, self.channels),
-        dtype=np.float32
-    )
-    time_array: NDArray[np.floating] = np.empty(num_bursts, dtype=np.float32)
-    positions_array: NDArray[np.floating] = np.empty((num_bursts, 3), dtype=np.float32)
-    targets_array: NDArray[np.floating] = np.empty((num_bursts, 4), dtype=np.float32)
+    # Load images sequentially (direct assignment avoids np.stack intermediate copies)
+    for burst_files, last_metadata in valid_bursts:
+      burst_paths.append([os.path.join(self.data_path, f) for f in burst_files])
+      time_array.append(last_metadata.elapsed_time)
+      positions_array.append(last_metadata.sat_position)
+      targets_array.append(last_metadata.sat_rotation)
 
-    # Load images sequentially
-    for idx, (burst_files, metadata) in enumerate(valid_bursts):
-      images_array[idx] = np.stack([self._get_pixels(f) for f in burst_files])
-      time_array[idx] = metadata[-1].elapsed_time
-      positions_array[idx] = metadata[-1].sat_position
-      targets_array[idx] = metadata[-1].sat_rotation
+    numerical_data = np.column_stack([time_array, positions_array]).astype(np.float32)
+    targets_array = np.array(targets_array, dtype=np.float32)
 
-    # Combine time and positions, then normalize together
-    numerical_data: NDArray[np.floating] = np.column_stack([time_array, positions_array])
-    scaler: StandardScaler = StandardScaler()
-    numerical_data_norm: NDArray[np.floating] = scaler.fit_transform(numerical_data)
+    scaler = StandardScaler()
+    numerical_data = scaler.fit_transform(numerical_data).astype(np.float32)
 
     end_time = ti.time()
     execution_time = end_time - start_time
     print(f'Processing time: {execution_time:.4f} seconds')
 
-    return self._split_data(images_array, numerical_data_norm, targets_array)
+    return self._split_data(burst_paths, numerical_data, targets_array)
