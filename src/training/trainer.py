@@ -11,9 +11,12 @@ from tensorflow.keras.optimizers import Optimizer
 from config.model_config import ModelConfig
 from data.generator import DataGenerator
 from data.loader import DataLoader, TrainValTestData
+from models.relative_pose import RelativePoseModel
 from utils.model_helpers import (generate_filename, generate_output_path,
-                                 get_loss_function, get_metrics, get_model,
-                                 get_optimizer, plot_quaternion_loss)
+                                 get_loss_function, get_metrics, get_optimizer,
+                                 plot_quaternion_loss,
+                                 plot_weight_distributions,
+                                 visualize_all_filters)
 
 from .callbacks import EnhancedModelCheckpoint
 
@@ -36,7 +39,7 @@ class ModelTrainer:
     """
     # Initialize model and data
     self._config = config
-    self._model: Model = get_model(config)
+    self._model: Model = RelativePoseModel(config)
     self._data_loader: DataLoader = DataLoader(self._config)
     self._optimizer: Optimizer = get_optimizer(config.optimizer, config.lr)
     self._loss_function: Loss = get_loss_function(config.loss)
@@ -191,3 +194,6 @@ class ModelTrainer:
 
     self._save_metrics(all_metrics)
     plot_quaternion_loss(all_metrics, self._config)
+
+    visualize_all_filters(self._config, self._model.shared_cnn)
+    plot_weight_distributions(self._config, self._model.shared_cnn)

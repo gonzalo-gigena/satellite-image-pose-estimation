@@ -106,6 +106,7 @@ class EnhancedModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
       best_checkpoint = self.checkpoints[0]
       try:
         # Load only weights to avoid optimizer state mismatch
+        self.model.build({})
         self.model.load_weights(best_checkpoint.filepath, skip_mismatch=True)
         if self.verbose > 0:
           print(
