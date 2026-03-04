@@ -19,7 +19,6 @@ def get_metrics() -> List[tf.keras.metrics.Metric]:
   Returns:
     List of Keras metrics for training monitoring and optimization
   """
-  # return ['mae', quaternion_loss, angular_distance_loss, detailed_distance_loss, geodesic_loss]
   return [quaternion_loss]
 
 
@@ -181,8 +180,50 @@ def plot_weight_distributions(config: ModelConfig, cnn_branch):
   plt.close()
 
 
-def visualize_all_filters(config: ModelConfig, cnn_branch, max_filters_per_layer=64, min_display_size=16):
-  """Visualize filters from all conv layers in a single figure.
+def plot_weight_distributions(config: ModelConfig, cnn_branch):
+  """Plot weight distributions for all conv layers in a 2-column grid."""
+
+  sequential = getattr(cnn_branch, 'cnn_layers', None) or getattr(cnn_branch, 'layers', None)
+
+  conv_layers = [
+      layer for layer in sequential.layers
+      if isinstance(layer, tf.keras.layers.Conv2D)
+  ]
+
+  n_layers = len(conv_layers)
+  n_cols = 2
+  n_rows = int(np.ceil(n_layers / n_cols))
+
+  fig, axes = plt.subplots(n_rows, n_cols, figsize=(12, 4 * n_rows))
+  fig.suptitle('Weight Distributions per Layer', fontsize=14)
+
+  axes = np.array(axes).flatten()
+
+  for i, layer in enumerate(conv_layers):
+    try:
+      weights = layer.get_weights()[0].flatten()
+      biases = layer.get_weights()[1].flatten()
+
+      axes[i].hist(weights, bins=50, alpha=0.7, label='weights', color='blue')
+      axes[i].hist(biases, bins=50, alpha=0.7, label='biases', color='red')
+      axes[i].set_title(f'{layer.name}\nμ={weights.mean():.4f} σ={weights.std():.4f}')
+      axes[i].legend(fontsize=7)
+      axes[i].set_xlabel('Value')
+    except Exception as e:
+      axes[i].set_title(f'{layer.name}\n(Error: {e})')
+
+  for j in range(n_layers, len(axes)):
+    axes[j].set_visible(False)
+
+  plt.tight_layout()
+
+  output_path = generate_output_path(config, 'layers', prefix='weight_distributions_')
+  plt.savefig(output_path, dpi=150)
+  plt.close()
+
+
+def visualize_all_filters(config: ModelConfig, cnn_branch, max_filters_per_layer=None, min_display_size=16):
+  """Visualize filters from all conv layers in a 2-column grid.
 
   Args:
     cnn_branch: The CNN branch model
@@ -223,23 +264,22 @@ def visualize_all_filters(config: ModelConfig, cnn_branch, max_filters_per_layer
     f_h, f_w = weights.shape[0], weights.shape[1]
     is_rgb = weights.shape[2] == 3
 
-    # Scale up small filters so they're visible
     scale = max(1, min_display_size // max(f_h, f_w))
     d_h, d_w = f_h * scale, f_w * scale
 
     pad = 2
 
-    n_cols = int(np.ceil(np.sqrt(n_filters)))
-    n_rows = int(np.ceil(n_filters / n_cols))
+    grid_cols = int(np.ceil(np.sqrt(n_filters)))
+    grid_rows = int(np.ceil(n_filters / grid_cols))
 
-    grid_h = n_rows * (d_h + pad) + pad
-    grid_w = n_cols * (d_w + pad) + pad
+    grid_h = grid_rows * (d_h + pad) + pad
+    grid_w = grid_cols * (d_w + pad) + pad
 
     grid = np.ones((grid_h, grid_w, 3))
 
     for i in range(n_filters):
-      row = i // n_cols
-      col = i % n_cols
+      row = i // grid_cols
+      col = i % grid_cols
       y = row * (d_h + pad) + pad
       x = col * (d_w + pad) + pad
 
@@ -249,7 +289,6 @@ def visualize_all_filters(config: ModelConfig, cnn_branch, max_filters_per_layer
         channel = weights[:, :, 0, i]
         filt = np.stack([channel] * 3, axis=-1)
 
-      # Scale up the filter using nearest-neighbor
       if scale > 1:
         filt = np.repeat(np.repeat(filt, scale, axis=0), scale, axis=1)
 
@@ -257,66 +296,30 @@ def visualize_all_filters(config: ModelConfig, cnn_branch, max_filters_per_layer
 
     return grid
 
-  grids = [build_layer_grid(data) for data in layer_data]
+  n_layers = len(layer_data)
+  n_cols = 2
+  n_rows = int(np.ceil(n_layers / n_cols))
 
-  # --- Stack vertically, no excess whitespace ---
-  max_width = max(g.shape[1] for g in grids)
-  label_height = 40
-  gap = 15
+  fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 8 * n_rows))
+  axes = np.array(axes).flatten()
 
-  total_height = sum(g.shape[0] + label_height + gap for g in grids)
+  for i, data in enumerate(layer_data):
+    grid = build_layer_grid(data)
 
-  canvas = np.ones((total_height, max_width, 3))
-
-  y_offset = 0
-  label_positions = []
-
-  for grid, data in zip(grids, layer_data):
-    label_positions.append({
-        'y': y_offset + label_height // 2,
-        'text': (
-            f"{data['name']} — "
-            f"{data['n_filters']}/{data['shape'][-1]} filters, "
-            f"size {data['shape'][0]}×{data['shape'][1]}, "
-            f"C_in={data['shape'][2]}"
-        ),
-    })
-
-    y_start = y_offset + label_height
-    x_start = (max_width - grid.shape[1]) // 2
-    canvas[
-        y_start:y_start + grid.shape[0],
-        x_start:x_start + grid.shape[1],
-        :
-    ] = grid
-
-    y_offset = y_start + grid.shape[0] + gap
-
-  # Crop unused bottom space
-  canvas = canvas[:y_offset]
-
-  dpi = 150
-  fig_w = max(max_width / dpi * 3, 6)
-  fig_h = max(y_offset / dpi * 3, 4)
-  fig_w = min(fig_w, 25)
-  fig_h = min(fig_h, 50)
-
-  fig, ax = plt.subplots(1, 1, figsize=(fig_w, fig_h))
-  ax.imshow(canvas, interpolation='nearest')
-
-  for lp in label_positions:
-    ax.text(
-        5, lp['y'], lp['text'],
-        fontsize=9, fontweight='bold',
-        color='black',
-        verticalalignment='center',
-        bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.9)
+    title = (
+        f"{data['name']}"
     )
 
-  ax.axis('off')
+    axes[i].imshow(grid, interpolation='nearest')
+    axes[i].set_title(title, fontsize=20, fontweight='bold')
+    axes[i].axis('off')
+
+  for j in range(n_layers, len(axes)):
+    axes[j].set_visible(False)
+
   fig.suptitle('All Convolutional Filters', fontsize=14, fontweight='bold')
   plt.tight_layout()
 
   output_path = generate_output_path(config, 'layers', prefix='filters_')
-  plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
+  plt.savefig(output_path, dpi=150, bbox_inches='tight')
   plt.close()
