@@ -1,36 +1,37 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
+from config.model_config import ModelConfig
 from models.layers import CNNBranch
 
 
 class RelativePoseModel(tf.keras.Model):
   def __init__(
           self,
-          image_height=102,
-          image_width=102,
-          channels=1,
-          frames=3,
-          branch_type='cnnAspp',
-          load_weights=False,
-          train_weights=False
+          config: ModelConfig
   ):
     super(RelativePoseModel, self).__init__()
 
     # Store dimensions
-    self.image_height = image_height
-    self.image_width = image_width
-    self.channels = channels
-    self.branch_type = branch_type
-    self.frames = frames
+    self.image_height = config.image_height
+    self.image_width = config.image_width
+    self.channels = config.channels
+    self.branch_type = config.branch_type
+    self.frames = config.frames
 
     # Create shared CNN branch
-    self.shared_cnn = CNNBranch(self.branch_type, load_weights, train_weights, image_width, image_height)
+    self.shared_cnn = CNNBranch(
+        self.branch_type,
+        config.load_weights,
+        config.train_weights,
+        self.image_width,
+        self.image_height)
 
     # Numerical data processor
-    self.numerical_encoder = tf.keras.Sequential(
-        [layers.Dense(32, activation='relu'), layers.Dense(16, activation='relu')], name='numerical_encoder'
-    )
+    self.numerical_encoder = tf.keras.Sequential([
+        layers.Dense(32, activation='relu'),
+        layers.Dense(16, activation='relu')
+    ], name='numerical_encoder')
 
     # Regression part - FC1 now needs to handle concatenated features
     self.fc1 = layers.Dense(64, activation='relu', name='FC1')  # Increased size
@@ -38,33 +39,39 @@ class RelativePoseModel(tf.keras.Model):
 
   def call(self, inputs):
     # Handle dictionary input
-    if isinstance(inputs, dict):
-      images = inputs['image_data']  # Shape: (batch_size, F, H, W, C)
-      numerical = inputs['numerical']  # Shape: (batch_size, 4)
-    else:
+    if not isinstance(inputs, dict):
       raise ValueError("Input must be a dictionary with 'image_data' and 'numerical' keys")
 
-    # Split the images and extract features
-    features = []
-    for i in range(self.frames):
-      image_batch = images[:, i, :, :, :]  # Shape: (batch_size, H, W, C)
-      feature = self.shared_cnn(image_batch)
-      features.append(feature)
+    images = inputs['image_data']  # Shape: (batch_size, F, H, W, C)
+    numerical = inputs['numerical']  # Shape: (batch_size, 4)
 
-    # Concatenate features from all branches
-    image_features = layers.Concatenate(axis=-1)(features)
+    # Split the images and extract features
+    frame_features = []
+    for i in range(self.frames):
+      frame_img = images[:, i, :, :, :]  # Shape: (batch_size, H, W, C)
+      frame_feat = self.shared_cnn(frame_img)
+      frame_features.append(frame_feat)
+
+    image_features = tf.concat(frame_features, axis=-1)  # (B, F*D)
 
     # Process numerical input
     numerical_features = self.numerical_encoder(numerical)
 
     # Concatenate all features
-    combined_features = tf.concat([image_features, numerical_features], axis=-1)
+    combined_features = tf.concat(
+        [
+            image_features,
+            numerical_features
+        ],
+        axis=-1
+    )
 
     # Regression part
     x = self.fc1(combined_features)
     quaternion_output = self.fc2(x)
 
     # Normalize quaternion to unit length
+    quaternion_output = tf.cast(quaternion_output, tf.float32)
     quaternion_normalized = tf.nn.l2_normalize(quaternion_output, axis=-1)
 
     return quaternion_normalized

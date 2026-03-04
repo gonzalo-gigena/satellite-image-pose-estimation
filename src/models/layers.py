@@ -4,7 +4,7 @@ from typing import Any, Literal
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow.keras import layers
+from tensorflow.keras import layers, regularizers
 
 # implementation of https://arxiv.org/pdf/1702.01381
 
@@ -30,7 +30,7 @@ class CNNBranch(tf.keras.layers.Layer):
     self.use_spp = branch_type in ['cnnAspp', 'cnnBspp']
 
     # Set SPP levels based on branch type
-    if branch_type == 'cnnAspp' and (image_height, image_width) == (102, 102):
+    if 'spp' in branch_type and (image_height, image_width) == (102, 102):
       self.spp_levels = [1, 2]
     elif branch_type == 'cnnAspp':
       self.spp_levels = [1, 2, 3, 6]  # 4-level SPP
