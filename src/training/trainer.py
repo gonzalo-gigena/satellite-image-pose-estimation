@@ -13,10 +13,9 @@ from data.generator import DataGenerator
 from data.loader import DataLoader, TrainValTestData
 from models.relative_pose import RelativePoseModel
 from utils.model_helpers import (generate_filename, generate_output_path,
-                                 get_loss_function, get_metrics, get_optimizer,
-                                 plot_quaternion_loss,
-                                 plot_weight_distributions,
-                                 visualize_all_filters)
+                                 get_loss_function, get_metrics, get_optimizer)
+from utils.plot import (plot_filters, plot_prediction_examples,
+                        plot_quaternion_loss, plot_weight_distributions)
 
 from .callbacks import EnhancedModelCheckpoint
 
@@ -52,6 +51,7 @@ class ModelTrainer:
         data=data.train,
         config=self._config,
         shuffle=True,
+        augment=True,
     ).get_dataset()
 
     val_generator = DataGenerator(
@@ -192,8 +192,11 @@ class ModelTrainer:
     all_metrics['total_time_sec'] = total_elapsed
     all_metrics['test'] = test_results
 
-    self._save_metrics(all_metrics)
-    plot_quaternion_loss(all_metrics, self._config)
+    if self._config.metrics:
+      self._save_metrics(all_metrics)
+      plot_quaternion_loss(all_metrics, self._config)
 
-    visualize_all_filters(self._config, self._model.shared_cnn)
-    plot_weight_distributions(self._config, self._model.shared_cnn)
+      plot_filters(self._config, self._model.shared_cnn)
+      plot_weight_distributions(self._config, self._model.shared_cnn)
+
+    plot_prediction_examples(self._model, train_ds, val_ds, self._config, 4)

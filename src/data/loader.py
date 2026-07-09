@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from config.model_config import ModelConfig
@@ -118,26 +118,53 @@ class BaseDataLoader:
       self,
       burst_paths: List[List[str]],
       numerical_data: NDArray[np.float32],
-      targets: NDArray[np.float32]
+      targets: NDArray[np.float32],
+      groups: NDArray
   ) -> TrainValTestData:
 
     indices = np.arange(len(burst_paths))
-
-    train_idx, temp_idx = train_test_split(
-        indices,
-        test_size=1 - self.train_split,
-        random_state=self.seed,
-        shuffle=True
-    )
-
     val_ratio = self.validation_split / (self.validation_split + self.test_split)
 
-    val_idx, test_idx = train_test_split(
-        temp_idx,
-        test_size=1 - val_ratio,
-        random_state=self.seed,
-        shuffle=True
-    )
+    # Split by trajectory (sat_index) so temporally adjacent bursts from the
+    # same trajectory never land in both train and val/test.
+    unique_groups = np.unique(groups)
+    if len(unique_groups) >= 3:
+      gss = GroupShuffleSplit(
+          n_splits=1, test_size=1 - self.train_split, random_state=self.seed
+      )
+      train_idx, temp_idx = next(gss.split(indices, groups=groups))
+
+      gss_val = GroupShuffleSplit(
+          n_splits=1, test_size=1 - val_ratio, random_state=self.seed
+      )
+      val_rel, test_rel = next(
+          gss_val.split(temp_idx, groups=groups[temp_idx])
+      )
+      val_idx, test_idx = temp_idx[val_rel], temp_idx[test_rel]
+    else:
+      print(
+          f'Warning: only {len(unique_groups)} trajectory group(s) found, '
+          'falling back to random burst-level split (leaks near-duplicate '
+          'bursts between train and val).'
+      )
+      train_idx, temp_idx = train_test_split(
+          indices,
+          test_size=1 - self.train_split,
+          random_state=self.seed,
+          shuffle=True
+      )
+      val_idx, test_idx = train_test_split(
+          temp_idx,
+          test_size=1 - val_ratio,
+          random_state=self.seed,
+          shuffle=True
+      )
+
+    # Fit the scaler on training data only to avoid leaking val/test
+    # statistics into training.
+    scaler = StandardScaler()
+    scaler.fit(numerical_data[train_idx])
+    numerical_data = scaler.transform(numerical_data).astype(np.float32)
 
     training = DataSplit(
         images=burst_paths,
@@ -194,6 +221,7 @@ class DataLoader(BaseDataLoader):
     time_array = []
     positions_array = []
     targets_array = []
+    groups_array = []
 
     # Load images sequentially (direct assignment avoids np.stack intermediate copies)
     for burst_files, last_metadata in valid_bursts:
@@ -201,15 +229,18 @@ class DataLoader(BaseDataLoader):
       time_array.append(last_metadata.elapsed_time)
       positions_array.append(last_metadata.sat_position)
       targets_array.append(last_metadata.sat_rotation)
+      # Group by the raw position string: after merging, sat_index is a unique
+      # per-burst counter, but all bursts captured at the same trajectory
+      # point share the exact same position field. Grouping on it keeps every
+      # view of a scene on one side of the train/val/test split.
+      groups_array.append(burst_files[-1].split('_')[3])
 
     numerical_data = np.column_stack([time_array, positions_array]).astype(np.float32)
     targets_array = np.array(targets_array, dtype=np.float32)
-
-    scaler = StandardScaler()
-    numerical_data = scaler.fit_transform(numerical_data).astype(np.float32)
+    groups = np.array(groups_array)
 
     end_time = ti.time()
     execution_time = end_time - start_time
     print(f'Processing time: {execution_time:.4f} seconds')
 
-    return self._split_data(burst_paths, numerical_data, targets_array)
+    return self._split_data(burst_paths, numerical_data, targets_array, groups)

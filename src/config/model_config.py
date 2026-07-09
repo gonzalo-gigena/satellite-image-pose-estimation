@@ -28,6 +28,7 @@ class ModelConfig:
   load_weights: bool = False
   train_weights: bool = False
   resume_training: bool = True
+  metrics: bool = True
 
   # Output parameters
   log_dir: str = './logs'
@@ -37,7 +38,7 @@ class ModelConfig:
 
   # Hardcoded Params
   max_models: int = 10
-  monitor_metric: str = 'quaternion_loss'
+  monitor_metric: str = 'val_quaternion_loss'
   monitor_mode: str = 'min'
   use_lr_scheduler: bool = True
 

@@ -66,6 +66,17 @@ def detailed_distance_loss(y_true, y_pred):
   return tf.reduce_mean(min_distance)
 
 
+def angular_error_degrees(y_true, y_pred):
+  """
+  Mean rotation error in degrees, accounting for the q/-q double cover.
+  Metric only (not differentiable-friendly near 0), for interpretability.
+  """
+  dot = tf.reduce_sum(y_true * y_pred, axis=-1)
+  dot = tf.clip_by_value(tf.abs(dot), 0.0, 1.0)
+  angle = 2.0 * tf.acos(dot)
+  return tf.reduce_mean(angle) * (180.0 / 3.14159265358979)
+
+
 def geodesic_loss(y_true, y_pred):
   # Assuming both y_true and y_pred are already normalized to unit quaternions
   # Compute the dot product for each quaternion pair along the last axis

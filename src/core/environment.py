@@ -19,8 +19,10 @@ def _setup_gpu() -> None:
 
   gpus = tf.config.experimental.list_physical_devices('GPU')
   if gpus:
-    for gpu in gpus:
-      tf.config.experimental.set_memory_growth(gpu, True)
+    # for gpu in gpus:
+    #  tf.config.experimental.set_memory_growth(gpu, True)
+    tf.config.set_visible_devices(gpus[1], 'GPU')
+    tf.config.experimental.set_memory_growth(gpus[1], True)
 
   print('TensorFlow version:', tf.__version__)
   print('CUDA available:', tf.test.is_built_with_cuda())

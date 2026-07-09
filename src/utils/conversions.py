@@ -1,28 +1,37 @@
 import numpy as np
-import tensorflow as tf
 
 
-def quaternion_to_rotation_degrees(q):
-  """Convert quaternion to Euler angles in degrees using TensorFlow operations."""
-  w, x, y, z = q[0], q[1], q[2], q[3]
+def quaternion_to_rotation_matrix(q: np.ndarray) -> np.ndarray:
+  """Convert a unit quaternion (qw, qx, qy, qz) to a 3x3 rotation matrix.
 
-  # Roll (x-axis rotation)
-  sinr_cosp = 2 * (w * x + y * z)
-  cosr_cosp = 1 - 2 * (x * x + y * y)
-  roll = tf.atan2(sinr_cosp, cosr_cosp)
+  Args:
+    q: Array of shape (4,) with components (qw, qx, qy, qz).
 
-  # Pitch (y-axis rotation)
-  sinp = 2 * (w * y - z * x)
-  # Handle gimbal lock
-  pitch = tf.where(tf.abs(sinp) >= 1, tf.sign(sinp) * (tf.constant(np.pi) / 2), tf.asin(sinp))
+  Returns:
+    Rotation matrix of shape (3, 3).
+  """
+  q = q / np.linalg.norm(q)
+  qw, qx, qy, qz = q
 
-  # Yaw (z-axis rotation)
-  siny_cosp = 2 * (w * z + x * y)
-  cosy_cosp = 1 - 2 * (y * y + z * z)
-  yaw = tf.atan2(siny_cosp, cosy_cosp)
+  R = np.array([
+      [1 - 2 * (qy**2 + qz**2), 2 * (qx * qy - qz * qw), 2 * (qx * qz + qy * qw)],
+      [2 * (qx * qy + qz * qw), 1 - 2 * (qx**2 + qz**2), 2 * (qy * qz - qx * qw)],
+      [2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx**2 + qy**2)],
+  ])
+  return R
 
-  # Convert to degrees
-  angles_rad = tf.stack([roll, pitch, yaw])
-  angles_deg = angles_rad * 180.0 / tf.constant(np.pi)
 
-  return angles_deg
+def angular_error_deg(q_pred: np.ndarray, q_true: np.ndarray) -> float:
+  """Geodesic angular error in degrees between two unit quaternions.
+
+  Handles the double-cover ambiguity (q and -q same rotation) via abs dot product.
+
+  Args:
+    q_pred: Predicted quaternion (4,).
+    q_true: Ground truth quaternion (4,).
+
+  Returns:
+    Angular error in degrees.
+  """
+  dot = np.clip(np.abs(np.dot(q_pred, q_true)), 0.0, 1.0)
+  return float(np.degrees(2.0 * np.arccos(dot)))

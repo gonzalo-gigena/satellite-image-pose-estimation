@@ -144,7 +144,7 @@ def _save(fig: plt.Figure, save_name: str) -> None:
   os.makedirs(os.path.dirname(path), exist_ok=True)
   fig.savefig(path, dpi=150, bbox_inches='tight')
   plt.close(fig)
-  print(f'  ✓ {path}')
+  print(path)
 
 
 def _make_grid(
@@ -153,25 +153,19 @@ def _make_grid(
     panel_h: float,
     sharey: bool = True,
 ) -> tuple[plt.Figure, list[plt.Axes], list[plt.Axes]]:
-  """
-  Build a 2-column grid tall enough to hold n_panels subplots.
-  Returns (fig, flat_active_axes, flat_all_axes).
-  flat_all_axes includes any empty padding cell so the caller can hide it.
-  """
   n_cols = 2
-  n_rows = (n_panels + 1) // 2          # ceiling division
+  n_rows = (n_panels + 1) // 2
 
   fig, axes = plt.subplots(
       n_rows, n_cols,
       figsize=(panel_w * n_cols, panel_h * n_rows),
       sharey=sharey,
-      squeeze=False,                        # always 2-D array
+      squeeze=False,
   )
 
   flat_all = [axes[r][c] for r in range(n_rows) for c in range(n_cols)]
   flat_active = flat_all[:n_panels]
 
-  # Hide the spare cell when n_panels is odd
   for ax in flat_all[n_panels:]:
     ax.set_visible(False)
 
@@ -188,6 +182,9 @@ def load_all(metrics_dir: str = METRICS_DIR) -> List[ModelResult]:
       data = json.load(fp)
     test = data.get('test', {})
     epochs = len(data.get('quaternion_loss', []))
+    if epochs < 200:
+      print(f'Skip {fname}')
+      continue
     results.append(ModelResult(
         image_height=int(parts[0]),
         image_width=int(parts[1]),
@@ -232,6 +229,109 @@ def load_checkpoint_stats(
     m.disk_size_mb = (
         sum(f.stat().st_size for f in keras_files) / len(keras_files) / (1024 ** 2)
     )
+
+
+def print_stats(
+    results: List[ModelResult],
+    dims: List[str],
+) -> None:
+  METRICS: List[tuple[str, Callable[[ModelResult], float]]] = [
+      ('Best Val Loss', lambda m: m.best_val),
+      ('Time (200 Epochs)', lambda m: m.time_per_100_epochs),
+      ('Disk Size (MB)', lambda m: m.disk_size_mb),
+  ]
+
+  slices = _slices(results, dims)
+  n_slices = len(slices)
+
+  for comp in COMPARISONS:
+    attr = comp['attr']
+    get_value = comp['get_value']
+    title = comp['title']
+    palette = COLORS[attr]
+
+    print(f'\n% {"=" * 58}')
+    print(f'% Statistics by {title}')
+    print(f'% {"=" * 58}')
+
+    for metric_label, metric_fn in METRICS:
+
+      data: dict[str, dict[Any, np.ndarray]] = {}
+      all_keys: set = set()
+
+      for slice_label, subset in slices:
+        groups: dict[Any, List[float]] = {}
+        for m in subset:
+          v = metric_fn(m)
+          if not np.isnan(v) and v not in (float('inf'), float('-inf')):
+            groups.setdefault(get_value(m), []).append(v)
+        data[slice_label] = {k: np.array(v) for k, v in groups.items()}
+        all_keys |= groups.keys()
+
+      ordered_keys = [k for k in palette if k in all_keys] + \
+          sorted([k for k in all_keys if k not in palette], key=str)
+
+      caption = f'{metric_label} by {title} across all dimensions'
+      label = (
+          f'tab:{attr}_'
+          f'{metric_label.lower().replace(" ", "_").replace("/", "per")}'
+      )
+
+      col_spec = 'l' + ' rrr' * n_slices
+
+      print()
+      print(r'\begin{table}[H]')
+      print(r'  \centering')
+      print(f'  \\caption{{{caption}}}')
+      print(f'  \\label{{{label}}}')
+      print(r'  \resizebox{\textwidth}{!}{%')
+      print(r'  \begin{tabular}{' + col_spec + r'}')
+      print(r'    \toprule')
+
+      slice_headers = ' & '.join(
+          f'\\multicolumn{{3}}{{c}}{{\\textbf{{{sl}}}}}'
+          for sl, _ in slices
+      )
+      print(f'    & {slice_headers} \\\\')
+
+      cmidrules = []
+      for i in range(n_slices):
+        start = 2 + i * 3
+        end = start + 2
+        cmidrules.append(f'\\cmidrule(lr){{{start}-{end}}}')
+      print(f'    {"  ".join(cmidrules)}')
+
+      sub_headers = ' & '.join(
+          [r'\textbf{Mean} & \textbf{Md} & \textbf{p95}'] * n_slices
+      )
+      print(f'    \\textbf{{Category}} & {sub_headers} \\\\')
+      print(r'    \midrule')
+
+      if not ordered_keys:
+        total_cols = 1 + n_slices * 3
+        print(f'    \\multicolumn{{{total_cols}}}{{c}}{{\\textit{{no data}}}} \\\\')
+      else:
+        for key in ordered_keys:
+          safe_key = str(key).replace('_', r'\_')
+          row_cells = [safe_key]
+
+          for slice_label, _ in slices:
+            vals = data[slice_label].get(key)
+            if vals is None or len(vals) == 0:
+              row_cells.append(r'\multicolumn{3}{c}{---}')
+            else:
+              row_cells.append(
+                  f'{np.mean(vals):.3f} & '
+                  f'{np.median(vals):.3f} & '
+                  f'{np.percentile(vals, 95):.3f}'
+              )
+
+          print(f'    {" & ".join(row_cells)} \\\\')
+
+      print(r'    \bottomrule')
+      print(r'  \end{tabular}')
+      print(r'  }%  end resizebox')
+      print(r'\end{table}')
 
 
 def grid_box_by_attribute(
@@ -283,7 +383,6 @@ def grid_box_by_attribute(
     ax.set_xticklabels([str(k) for k in keys], fontsize=9,
                        rotation=15, ha='right')
 
-  # Left-column axes get the y-label
   for ax in axes[::2]:
     ax.set_ylabel(ylabel, fontsize=10)
 
@@ -300,9 +399,6 @@ def grid_mean_curves_by_attribute(
     sup_title: str,
     save_name: str,
 ) -> None:
-  """
-  2-column grid of validation-loss curve panels.
-  """
   slices = _slices(results, dims)
   palette = COLORS[attr]
   fig, axes, _ = _make_grid(len(slices), panel_w=7, panel_h=4.5, sharey=True)
@@ -333,11 +429,9 @@ def grid_mean_curves_by_attribute(
       ax.text(0.5, 0.5, 'no data', transform=ax.transAxes,
               ha='center', va='center', color='grey', fontsize=10)
 
-  # Left-column axes get the y-label
   for ax in axes[::2]:
     ax.set_ylabel('Validation Quaternion Loss', fontsize=10)
 
-  # Single shared legend on the last active axis
   handles = [
       mlines.Line2D([], [], color=c, linewidth=2.2, label=str(k))
       for k, c in palette.items()
@@ -359,9 +453,6 @@ def grid_loss_overview(
     dims: List[str],
     save_name: str = 'loss_overview',
 ) -> None:
-  """
-  2-column grid of train/val mean-curve panels.
-  """
   slices = _slices(results, dims)
   fig, axes, _ = _make_grid(len(slices), panel_w=7, panel_h=4.5, sharey=True)
 
@@ -411,7 +502,8 @@ def main():
   dims = available_dims(results)
   print(f'\nGenerating plots… (dims found: {dims})\n')
 
-  print('— Validation loss curves —')
+  print_stats(results, dims)
+
   for comp in COMPARISONS:
     grid_mean_curves_by_attribute(
         results, dims,
@@ -421,7 +513,6 @@ def main():
         save_name=f"{comp['name']}_curves",
     )
 
-  print('\n— Best validation loss box plots —')
   for comp in COMPARISONS:
     grid_box_by_attribute(
         results, dims,
@@ -433,7 +524,6 @@ def main():
         save_name=f"{comp['name']}_box",
     )
 
-  print('\n— Training time box plots —')
   for comp in COMPARISONS:
     grid_box_by_attribute(
         results, dims,
@@ -445,7 +535,6 @@ def main():
         save_name=f"time_{comp['name']}_box",
     )
 
-  print('\n— Checkpoint disk size —')
   grid_box_by_attribute(
       results, dims,
       attr='branch_type',
@@ -456,10 +545,7 @@ def main():
       save_name='disk_size_by_branch_box',
   )
 
-  print('\n— Train / val loss overview —')
   grid_loss_overview(results, dims, save_name='loss_overview')
-
-  print(f"\nAll plots saved to '{OUTPUT_DIR}/'")
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ from typing import Any, Literal
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
-from tensorflow.keras import layers, regularizers
+from tensorflow.keras import layers
 
 # implementation of https://arxiv.org/pdf/1702.01381
 
@@ -64,8 +64,10 @@ class CNNBranch(tf.keras.layers.Layer):
     if self.use_spp:
       layers_list.append(SpatialPyramidPooling(self.spp_levels, name='spp'))
     else:
-      # Flatten for fixed-size branches
-      layers_list.append(layers.Flatten(name='flatten'))
+      # Global average pooling keeps the feature vector at 256 regardless of
+      # input resolution; flattening the spatial map produced tens of
+      # thousands of features and a massively overparameterized FC head.
+      layers_list.append(layers.GlobalAveragePooling2D(name='gap'))
 
     self.layers = tf.keras.Sequential(layers_list, name=f'shared_cnn_{self.branch_type}')
 

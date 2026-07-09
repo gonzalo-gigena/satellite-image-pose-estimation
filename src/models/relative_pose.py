@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import layers
+from tensorflow.keras import layers, regularizers
 
 from config.model_config import ModelConfig
 from models.layers import CNNBranch
@@ -29,15 +29,19 @@ class RelativePoseModel(tf.keras.Model):
 
     # Numerical data processor
     self.numerical_encoder = tf.keras.Sequential([
-        layers.Dense(32, activation='relu'),
-        layers.Dense(16, activation='relu')
+        layers.Dense(32, activation='relu', kernel_regularizer=regularizers.l2(1e-4)),
+        layers.Dense(16, activation='relu', kernel_regularizer=regularizers.l2(1e-4))
     ], name='numerical_encoder')
 
     # Regression part - FC1 now needs to handle concatenated features
-    self.fc1 = layers.Dense(64, activation='relu', name='FC1')  # Increased size
-    self.fc2 = layers.Dense(4, name='quaternion_output')
+    self.dropout1 = layers.Dropout(0.5, name='dropout_features')
+    self.fc1 = layers.Dense(
+        64, activation='relu', kernel_regularizer=regularizers.l2(1e-4), name='FC1')
+    self.dropout2 = layers.Dropout(0.3, name='dropout_fc1')
+    self.fc2 = layers.Dense(
+        4, kernel_regularizer=regularizers.l2(1e-4), name='quaternion_output')
 
-  def call(self, inputs):
+  def call(self, inputs, training=None):
     # Handle dictionary input
     if not isinstance(inputs, dict):
       raise ValueError("Input must be a dictionary with 'image_data' and 'numerical' keys")
@@ -67,7 +71,9 @@ class RelativePoseModel(tf.keras.Model):
     )
 
     # Regression part
-    x = self.fc1(combined_features)
+    x = self.dropout1(combined_features, training=training)
+    x = self.fc1(x)
+    x = self.dropout2(x, training=training)
     quaternion_output = self.fc2(x)
 
     # Normalize quaternion to unit length

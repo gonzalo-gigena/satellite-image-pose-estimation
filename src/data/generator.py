@@ -52,8 +52,12 @@ class DataGenerator:
     )
 
     if self.augment:
+      # Photometric-only augmentations: they preserve the orientation label.
+      # Factors are sampled once per burst so all frames stay consistent.
       images = tf.image.random_brightness(images, 0.2)
       images = tf.image.random_contrast(images, 0.8, 1.2)
+      images = images + tf.random.normal(tf.shape(images), stddev=0.02)
+      images = tf.clip_by_value(images, 0.0, 1.0)
 
     if self.debug:
       # Check correct frame count
