@@ -65,24 +65,23 @@ python src/main.py --data_path <path_to_dataset> [options]
 
 | Argument                    | Short  | Type     | Description                          | Default        | Choices                                                  | Required |
 |-----------------------------|--------|----------|--------------------------------------|----------------|----------------------------------------------------------|----------|
-| `--data_path`               | `-d`   | `str`    | Path to the dataset                  | N/A            | N/A                                                      | ✅        |
+| `--data_path`               | `-dp`  | `str`    | Path to the dataset                  | N/A            | N/A                                                      | ✅        |
 | **Data Parameters**         |        |          |                                      |                |                                                          |          |
 | `--train_split`             | `-t`   | `float`  | Ratio of training data split         | `0.8`          | `0` to `1`                                              | ❌        |
 | `--validation_split`        | `-v`   | `float`  | Ratio of validation data split       | `0.1`          | `0` to `1`                                              | ❌        |
-| `--test_split`              | `-ts`  | `float`  | Ratio of test data split             | `0.1`          | `0` to `1`                                              | ❌        |
 | `--branch_type`             | `-bt`  | `str`    | Branch architecture type             | `'cnnAspp'`    | `'cnnA'`, `'cnnAspp'`, `'cnnB'`, `'cnnBspp'`           | ❌        |
 | **Training Parameters**     |        |          |                                      |                |                                                          |          |
 | `--load_weights`            | `-lw`  | `flag`   | Load pre-trained weights             | `False`        | N/A                                                      | ❌        |
 | `--train_weights`           | `-tw`  | `flag`   | Fine-tune pre-trained weights        | `False`        | N/A                                                      | ❌        |
-| `--resume_training`         | `-rt`  | `flag`   | Resume training from checkpoint      | `True`         | N/A                                                      | ❌        |
+| `--resume_training`         | `-rt`  | `flag`   | Resume training from checkpoint      | `False`        | N/A                                                      | ❌        |
 | `--image_height`            | `-ih`  | `int`    | Image height                         | `102`          | N/A                                                      | ❌        |
 | `--image_width`             | `-iw`  | `int`    | Image width                          | `102`          | N/A                                                      | ❌        |
-| `--batch_size`              | `-b`   | `int`    | Batch size for training              | `128`          | N/A                                                      | ❌        |
+| `--batch_size`              | `-bs`  | `int`    | Batch size for training              | `128`          | N/A                                                      | ❌        |
 | `--frames`                  | `-f`   | `int`    | Number of frames per burst           | `3`            | N/A                                                      | ❌        |
 | `--channels`                | `-c`   | `int`    | Number of channels per image         | `1`            | N/A                                                      | ❌        |
 | `--epochs`                  | `-e`   | `int`    | Number of training epochs            | `100`          | N/A                                                      | ❌        |
 | `--lr`                      | `-lr`  | `float`  | Learning rate for optimizer          | `0.001`        | N/A                                                      | ❌        |
-| `--degrees`                 | `-deg` | `int`    | Degree parameter for loss            | `1`            | N/A                                                      | ❌        |
+| `--degrees`                 | `-d`   | `int`    | Synthetic images rotation degree     | `1`            | N/A                                                      | ❌        |
 | `--optimizer`               | `-o`   | `str`    | Optimizer for training               | `'adam'`       | `'adam'`, `'sgd'`, `'rmsprop'`                          | ❌        |
 | `--loss`                    | `-l`   | `str`    | Loss function for training           | `'quaternion'` | `'quaternion'`, `'angular'`, `'detailed'`, `'geodesic'` | ❌        |
 | **Output Parameters**       |        |          |                                      |                |                                                          |          |
@@ -96,7 +95,7 @@ python src/main.py --data_path <path_to_dataset> [options]
 #### Example 1: Basic Usage
 
 ```bash
-python src/main.py -d ../satellite-image-generation/SyntheticImages -f 5 -c 3
+python src/main.py -dp ../satellite-image-generation/SyntheticImages/102_102_3_1_merged -f 3 -c 3
 ```
 
 #### Example 2: Customized Training Parameters with Long Form
@@ -115,7 +114,7 @@ python src/main.py --data_path /path/to/data \
 #### Example 3: Using Short Flags
 
 ```bash
-python src/main.py -d /path/to/data -b 64 -lr 0.001 -e 200 -l geodesic -bt cnnAspp -ih 128 -iw 128
+python src/main.py -dp /path/to/data -bs 64 -lr 0.001 -e 200 -l geodesic -bt cnnAspp -ih 128 -iw 128
 ```
 
 #### Example 4: Loading and Fine-tuning Pre-trained Weights
@@ -124,8 +123,22 @@ python src/main.py -d /path/to/data -b 64 -lr 0.001 -e 200 -l geodesic -bt cnnAs
 > `--load_weights` (`-lw`) requires `--channels` (`-c`) to be `3`.
 
 ```bash
-python src/main.py -d /path/to/data -lw -tw -bt cnnA -c 3
+python src/main.py -dp /path/to/data -lw -tw -bt cnnA -c 3 -lr 0.0001
 ```
+
+> When fine-tuning pre-trained weights, use a lower learning rate (e.g. `1e-4`); the default `1e-3` degrades the pre-trained convolutional filters.
+
+---
+
+## Training Behavior
+
+- **Data split**: bursts are split into train/val/test **by trajectory position** (`GroupShuffleSplit` on the position field of the filename), so every burst captured at the same trajectory point lands on the same side of the split. Validation and test therefore measure generalization to unseen scenes, not recall of near-duplicate frames. If a dataset contains fewer than 3 distinct positions, the loader warns and falls back to a random burst-level split.
+- **Test set**: evaluated exactly once after training; no training decision (stopping, checkpointing, LR) depends on it.
+- **Numerical normalization**: the `StandardScaler` for the numerical inputs (elapsed time + position) is fit on the training split only, then applied to val/test.
+- **Augmentation** (training split only): random brightness, random contrast, and Gaussian noise, with pixel values clipped back to `[0, 1]`. All augmentations are photometric, so orientation labels are unaffected.
+- **Regularization**: dropout (0.5 after the feature concatenation, 0.3 after FC1) and L2 weight decay (`1e-4`) on all dense layers. The non-SPP branches (`cnnA`, `cnnB`) use global average pooling instead of flattening, keeping the per-frame feature vector at 256 regardless of input resolution.
+- **Metrics**: `quaternion_loss` plus `angular_error_degrees` (mean rotation error in degrees, accounting for the q/-q double cover). Early stopping (patience 15), `ReduceLROnPlateau` (patience 10), and checkpointing all monitor `val_quaternion_loss`.
+
 ---
 
 ## Notes
@@ -136,11 +149,11 @@ python src/main.py -d /path/to/data -lw -tw -bt cnnA -c 3
 
 - **Hardcoded Parameters**: The following parameters are fixed internally and cannot be configured via the command line:
 
-  | Parameter         | Value              | Description                              |
-  |-------------------|--------------------|------------------------------------------|
-  | `max_models`      | `10`               | Maximum number of model checkpoints kept |
-  | `monitor_metric`  | `quaternion_loss`  | Metric used for model checkpointing      |
-  | `monitor_mode`    | `min`              | Checkpointing strategy (minimize metric) |
-  | `use_lr_scheduler`| `True`             | Whether to use a learning rate scheduler |
+  | Parameter         | Value                  | Description                                                    |
+  |-------------------|------------------------|----------------------------------------------------------------|
+  | `max_models`      | `10`                   | Maximum number of model checkpoints kept                       |
+  | `monitor_metric`  | `val_quaternion_loss`  | Metric monitored by checkpointing, early stopping, and LR drop |
+  | `monitor_mode`    | `min`                  | Checkpointing strategy (minimize metric)                       |
+  | `use_lr_scheduler`| `True`                 | Whether to use a learning rate scheduler                       |
 
 ---
